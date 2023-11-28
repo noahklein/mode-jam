@@ -14,6 +14,8 @@ World :: struct {
     cam : rlib.Camera2D,
     player: Player,
     boxes: [dynamic]Box,
+
+    dt_acc: f32, // For fixed update
 }
 
 Player :: struct {
@@ -26,6 +28,10 @@ player_pos :: proc(player: Player) -> rlib.Vector2 {
     return {player.rect.x, player.rect.y}
 }
 
+player_grounded :: proc(player: Player) -> bool {
+    return false
+}
+
 PLAYER_SIZE :: 100
 
 main :: proc() {
@@ -35,7 +41,13 @@ main :: proc() {
     world := World{
         screen = DEFAULT_SCREEN,
         cam = { zoom = 1, offset = DEFAULT_SCREEN * 0.5 },
-        player = {rect = { height = PLAYER_SIZE, width = PLAYER_SIZE }}
+        player = {rect = { height = PLAYER_SIZE, width = PLAYER_SIZE }},
+        boxes = {
+            {
+                mode = {.Sidescroller, .TopDown},
+                rect = {x = 100, y = 100, height = 20, width = 20},
+            },
+        },
     }
 
 
@@ -61,15 +73,15 @@ draw :: proc(w: World) {
     rlib.ClearBackground(rlib.LIME if w.mode == .Sidescroller else rlib.ORANGE)
 
     rlib.BeginMode2D(w.cam)
-    rlib.DrawRectangleRounded(w.player.rect, 0.2, 1, rlib.RED)
-    // rlib.DrawRectangle(i32(w.player.pos.x), i32(w.player.pos.y), PLAYER_SIZE.x, PLAYER_SIZE.y, rlib.PURPLE)
-    rlib.DrawRectangle(20, 20, 60, 60, rlib.PURPLE)
+    rlib.DrawRectangleRounded(w.player.rect, 0.1, 1, rlib.RED)
+    for box in w.boxes {
+        rlib.DrawRectangleRec(box.rect, box_color(box.mode))
+    }
     rlib.EndMode2D()
 
 
     FONT :: 10
     draw_text(10, 10, FONT, "%d FPS; Mode: %v", rlib.GetFPS(), w.mode)
-    // draw_text(10, 20, FONT, "Mode: %v", w.mode)
     draw_text(10, 25, FONT, "Pos: %v", player_pos(w.player))
     draw_text(10, 35, FONT, "Vel:  %v", w.player.vel)
 }
@@ -77,4 +89,13 @@ draw :: proc(w: World) {
 draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {
     str := fmt.ctprintf(format, ..args)
     rlib.DrawText(str, x, y, font_size, rlib.DARKBLUE)
+}
+
+box_color :: proc(mode: bit_set[GameMode]) -> rlib.Color {
+    if .Sidescroller in mode && .TopDown in mode do return rlib.PURPLE
+    else if .Sidescroller in mode do return rlib.BLUE
+    else if .TopDown      in mode do return rlib.RED
+
+    fmt.eprintln("box_color called on Box with empty bit_set[GameMode]")
+    return rlib.BLACK
 }
