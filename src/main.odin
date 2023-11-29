@@ -67,7 +67,7 @@ main :: proc() {
     defer rlib.UnloadTexture(world.tex_atlas.texture)
 
     world.player.animation_system = &sprites.AnimationSystem{
-        current_anim = "idle",
+        current_anim = "",
         animations = {
             "idle" = { start_tile = 0, end_tile = 2 },
             "walk" = { start_tile = 8, end_tile = 15 },
@@ -111,6 +111,9 @@ draw :: proc(w: World) {
     }
 
     player_sprite := sprites.animation_rect(w.player.animation_system)
+    if w.player.vel.x < 0 {
+        player_sprite.width *= -1
+    }
     rlib.DrawTextureRec(w.player.animation_system.atlas.texture, player_sprite, player_pos(w.player), rlib.WHITE)
 
     // rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(12)), {f32(-60), f32(-70)}, rlib.WHITE)
