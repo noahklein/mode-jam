@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import rlib "vendor:raylib"
+import "sprites"
 
 GameMode :: enum u8 {
     Sidescroller,
@@ -15,6 +16,8 @@ World :: struct {
     player: Player,
     boxes: [dynamic]Box,
 
+    tex_atlas: sprites.Atlas,
+
     dt_acc: f32, // For fixed update
 }
 
@@ -22,26 +25,30 @@ Player :: struct {
     rect: rlib.Rectangle,
     vel: rlib.Vector2,
     is_grounded: bool,
+
+    facing_dir: Direction,
+    animation_system: ^sprites.AnimationSystem,
+    // anim_state: PlayerAnimationState,
 }
+
+Direction :: enum { North, East, South, West, }
 
 player_pos :: proc(player: Player) -> rlib.Vector2 {
     return {player.rect.x, player.rect.y}
 }
 
-player_grounded :: proc(player: Player) -> bool {
-    return false
-}
-
-PLAYER_SIZE :: 100
+PLAYER_SIZE :: 16
 
 main :: proc() {
     defer free_all(context.temp_allocator)
 
-    DEFAULT_SCREEN :: rlib.Vector2{800, 600}
+    DEFAULT_SCREEN :: rlib.Vector2{1600, 900}
     world := World{
         screen = DEFAULT_SCREEN,
-        cam = { zoom = 1, offset = DEFAULT_SCREEN * 0.5 },
-        player = {rect = { height = PLAYER_SIZE, width = PLAYER_SIZE }},
+        cam = { zoom = 5, offset = DEFAULT_SCREEN * 0.5 },
+        player = {
+            rect = { height = PLAYER_SIZE, width = PLAYER_SIZE },
+        },
         boxes = {
             {
                 mode = {.Sidescroller, .TopDown},
@@ -50,9 +57,29 @@ main :: proc() {
         },
     }
 
-
     rlib.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rlib.CloseWindow()
+
+    world.tex_atlas = {
+        tile_size = 16,
+        texture = rlib.LoadTexture("assets/tilemap.png"),
+    }
+    defer rlib.UnloadTexture(world.tex_atlas.texture)
+
+    world.player.animation_system = &sprites.AnimationSystem{
+        // animations: map[string]sprites.animation_rect(){i}
+        current_anim = "idle",
+        animations = {
+            "idle" = { start_tile = 0, end_tile = 2 },
+            "walk" = { start_tile = 8, end_tile = 15 },
+            "jump" = { start_tile = 16, end_tile = 20 },
+        },
+        atlas = {
+            tile_size = 16,
+            texture = rlib.LoadTexture("assets/player.png"),
+        },
+    }
+    defer rlib.UnloadTexture(world.player.animation_system.atlas.texture)
 
     rlib.SetTargetFPS(60)
     for !rlib.WindowShouldClose() {
@@ -73,17 +100,30 @@ draw :: proc(w: World) {
     rlib.ClearBackground(rlib.LIME if w.mode == .Sidescroller else rlib.ORANGE)
 
     rlib.BeginMode2D(w.cam)
-    rlib.DrawRectangleRounded(w.player.rect, 0.1, 1, rlib.RED)
-    for box in w.boxes {
-        rlib.DrawRectangleRec(box.rect, box_color(box.mode))
+    for i in 0..=120 {
+        cols := int(w.tex_atlas.texture.width / 16)
+        x := 16 * (i % cols)
+        y := 16 * (i / cols)
+        rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(i)), {f32(x), f32(y)}, rlib.WHITE)
     }
+    for box in w.boxes {
+        // rlib.DrawRectangleRec(box.rect, box_color(box.mode))
+        // rlib.DrawTextureRec(w.tex_atlas.texture, sprite(w.tex_atlas, 0), {0, 0}, rlib.WHITE)
+    }
+
+    player_sprite := sprites.animation_rect(w.player.animation_system)
+    rlib.DrawTextureRec(w.player.animation_system.atlas.texture, player_sprite, player_pos(w.player), rlib.WHITE)
+
+    // rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(12)), {f32(-60), f32(-70)}, rlib.WHITE)
+    // rlib.DrawRectangleRounded(w.player.rect, 0.25, 4, rlib.RED)
     rlib.EndMode2D()
 
 
     FONT :: 10
     draw_text(10, 10, FONT, "%d FPS; Mode: %v", rlib.GetFPS(), w.mode)
-    draw_text(10, 25, FONT, "Pos: %v", player_pos(w.player))
-    draw_text(10, 35, FONT, "Vel:  %v", w.player.vel)
+    draw_text(10, 30, FONT, "Pos: %v", player_pos(w.player))
+    draw_text(10, 40, FONT, "Vel:  %v", w.player.vel)
+    draw_text(10, 50, FONT, "Grounded:  %v", w.player.is_grounded)
 }
 
 draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {

@@ -4,15 +4,16 @@ import rlib "vendor:raylib"
 import "core:math"
 import "core:math/linalg"
 import "core:fmt"
+import "sprites"
 
-GRAVITY :: -30
+GRAVITY :: -100
 FRICTION :: 0.25
 #assert(FRICTION >= 0 && FRICTION <= 1)
 
 FIXED_DT :: 1.0 / 120
 
 PLAYER_SPEED :: f32(50.0)
-JUMP_FORCE :: 30
+JUMP_FORCE :: 2 * PLAYER_SPEED * PLAYER_SPEED
 
 Input :: enum u8 {
     Up, Down,
@@ -61,8 +62,13 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         w.cam.target += diff * (speed * dt / length)
     }
 
+    if w.player.vel.y != 0 {
+        w.player.is_grounded = false
+    }
+
     w.player.vel *= 1 - FRICTION
 
+    // Resolve box collisions.
     for box in w.boxes do if w.mode in box.mode {
         collision, ok := swept_rect_collision(w.player, box.rect, dt)
         if !ok {
@@ -70,25 +76,36 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         }
 
         w.player.vel += collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
+        if collision.normal.y == -1 {
+            w.player.is_grounded = true
+        }
     }
 
     // Apply player velocity
     w.player.rect.x += w.player.vel.x * dt
     w.player.rect.y += w.player.vel.y * dt
+
+    sprites.update(w.player.animation_system, dt)
 }
 
 sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
          if .Left  in input do w.player.vel.x -= PLAYER_SPEED
     else if .Right in input do w.player.vel.x += PLAYER_SPEED
 
+    w.player.vel.y -= GRAVITY
     if w.player.is_grounded {
-        w.player.vel.y = 0
         if .Up in input {
             w.player.is_grounded = false
-            w.player.vel.y = JUMP_FORCE
+            w.player.vel.y = -JUMP_FORCE
         }
+    }
+
+    if w.player.vel == 0 {
+        sprites.play(w.player.animation_system, "idle", 0.5)
+    } else if w.player.is_grounded {
+        sprites.play(w.player.animation_system, "walk", 0.5)
     } else {
-        w.player.vel.y -= GRAVITY
+        sprites.play(w.player.animation_system, "walk", 0.5)
     }
 }
 
@@ -96,16 +113,21 @@ top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     acc := PLAYER_SPEED
     if .Up in input {
         w.player.vel.y -= acc
+        w.player.facing_dir = .North
     } else if .Down in input {
         w.player.vel.y += acc
+        w.player.facing_dir = .South
     }
 
     if .Left in input {
         w.player.vel.x -= acc
+        w.player.facing_dir = .West
     } else if .Right in input {
         w.player.vel.x += acc
+        w.player.facing_dir = .East
     }
 
+    sprites.play(w.player.animation_system, "walk", 0.5)
 }
 
 Collision :: struct {
