@@ -67,7 +67,6 @@ main :: proc() {
     defer rlib.UnloadTexture(world.tex_atlas.texture)
 
     world.player.animation_system = &sprites.AnimationSystem{
-        // animations: map[string]sprites.animation_rect(){i}
         current_anim = "idle",
         animations = {
             "idle" = { start_tile = 0, end_tile = 2 },
@@ -124,6 +123,7 @@ draw :: proc(w: World) {
     draw_text(10, 30, FONT, "Pos: %v", player_pos(w.player))
     draw_text(10, 40, FONT, "Vel:  %v", w.player.vel)
     draw_text(10, 50, FONT, "Grounded:  %v", w.player.is_grounded)
+    draw_text(10, 60, FONT, "Player anim:  %q", w.player.animation_system.current_anim)
 }
 
 draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {

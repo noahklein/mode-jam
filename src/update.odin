@@ -6,14 +6,15 @@ import "core:math/linalg"
 import "core:fmt"
 import "sprites"
 
-GRAVITY :: -100
+EPSILON :: 0.0001
+GRAVITY :: -50
 FRICTION :: 0.25
 #assert(FRICTION >= 0 && FRICTION <= 1)
 
 FIXED_DT :: 1.0 / 120
 
-PLAYER_SPEED :: f32(50.0)
-JUMP_FORCE :: 2 * PLAYER_SPEED * PLAYER_SPEED
+PLAYER_SPEED :: f32(20.0)
+JUMP_FORCE :: 1000
 
 Input :: enum u8 {
     Up, Down,
@@ -51,16 +52,13 @@ update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
 
 subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     // Camera smoothly follows player.
-    CAM_SMOOTH_MIN_DISTANCE :: 15
-    CAM_SMOOTH_MIN_SPEED :: 5
-    CAM_SMOOTH_FRACTION_SPEED :: 0.8
-    player_pos := rlib.Vector2{w.player.rect.x, w.player.rect.y}
-    diff := player_pos - w.cam.target
-    length := linalg.length(diff)
-    if length > CAM_SMOOTH_MIN_DISTANCE {
-        speed := max(CAM_SMOOTH_FRACTION_SPEED * length, CAM_SMOOTH_MIN_SPEED)
-        w.cam.target += diff * (speed * dt / length)
+    p_pos := player_pos(w.player)
+    if linalg.distance(p_pos, w.cam.target) > 5  {
+        w.cam.target += (p_pos - w.cam.target) * 0.9 * dt
     }
+
+    if abs(w.player.vel.y) < EPSILON do w.player.vel.y = 0
+    if abs(w.player.vel.x) < EPSILON do w.player.vel.x = 0
 
     if w.player.vel.y != 0 {
         w.player.is_grounded = false
@@ -89,23 +87,29 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
 }
 
 sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
+    has_move_input := .Left in input || .Right in input
+    p_anim := w.player.animation_system
+
+    if w.player.vel == {0, 0} || (p_anim.current_anim == "walk" && !has_move_input) {
+        sprites.play(p_anim, "idle", 2)
+    } else if w.player.is_grounded && has_move_input {
+        sprites.play(p_anim, "walk", 1)
+    } else {
+        // sprites.stop(w.player.animation_system)
+        // sprites.play(w.player.animation_system, "walk", 1)
+    }
+
          if .Left  in input do w.player.vel.x -= PLAYER_SPEED
     else if .Right in input do w.player.vel.x += PLAYER_SPEED
+
 
     w.player.vel.y -= GRAVITY
     if w.player.is_grounded {
         if .Up in input {
             w.player.is_grounded = false
             w.player.vel.y = -JUMP_FORCE
+            sprites.play(p_anim, "jump", 0.1) // @TODO: calculate jump time
         }
-    }
-
-    if w.player.vel == 0 {
-        sprites.play(w.player.animation_system, "idle", 0.5)
-    } else if w.player.is_grounded {
-        sprites.play(w.player.animation_system, "walk", 0.5)
-    } else {
-        sprites.play(w.player.animation_system, "walk", 0.5)
     }
 }
 
@@ -127,7 +131,7 @@ top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         w.player.facing_dir = .East
     }
 
-    sprites.play(w.player.animation_system, "walk", 0.5)
+    // sprites.play(w.player.animation_system, "walk", 1)
 }
 
 Collision :: struct {
