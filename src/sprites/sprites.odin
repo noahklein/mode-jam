@@ -1,14 +1,14 @@
 package sprites
 
-import rlib "vendor:raylib"
+import rl "vendor:raylib"
 import "core:fmt"
 
 Atlas :: struct {
     tile_size: i32,
-    texture: rlib.Texture,
+    texture: rl.Texture,
 }
 
-sprite :: proc(using atlas: Atlas, tile_id: i32) -> (rlib.Rectangle) {
+sprite :: proc(using atlas: Atlas, tile_id: i32) -> (rl.Rectangle) {
     rows := texture.width / tile_size
     x, y := tile_id % rows, tile_id / rows
     return {
@@ -19,40 +19,38 @@ sprite :: proc(using atlas: Atlas, tile_id: i32) -> (rlib.Rectangle) {
     }
 }
 
-Animation :: struct { start_tile, end_tile: i32 }
+Animation :: struct {
+    start_tile, end_tile: i32,
+    duration: f32,
+}
 
-AnimationSystem :: struct {
+AnimationSystem :: struct($Key: typeid) {
     atlas: Atlas,
-    animations: map[string]Animation,
+    animations: [Key]Animation,
 
     // Animation state.
-    current_anim: string,
+    current_anim: Key,
     elapsed, time_per_frame: f32,
     current_tile: i32,
 }
 
-play :: proc(sys: ^AnimationSystem, key: string, duration: f32) {
+play :: proc(sys: ^AnimationSystem($Key), key: Key) {
     if key == sys.current_anim {
-        // fmt.println("Already playing animation:", key)
         return
-    }
-    if key not_in sys.animations {
-        fmt.panicf("Tried to play unregistered animation: %s", key)
     }
 
     anim := sys.animations[key]
     sys.elapsed = 0
     sys.current_anim = key
     sys.current_tile = anim.start_tile
-    sys.time_per_frame = duration / f32(anim.end_tile - anim.start_tile)
+    sys.time_per_frame = anim.duration / f32(anim.end_tile - anim.start_tile)
 }
 
-stop :: proc(sys: ^AnimationSystem) {
-    sys.current_anim = ""
+stop :: proc(sys: ^AnimationSystem($Key)) {
 }
 
-update :: proc(sys: ^AnimationSystem, dt: f32) {
-    if sys.current_anim == "" {
+update :: proc(sys: ^AnimationSystem($Key), dt: f32) {
+    if sys.current_anim == nil {
         return
     }
 
@@ -71,6 +69,6 @@ update :: proc(sys: ^AnimationSystem, dt: f32) {
     }
 }
 
-animation_rect :: proc(sys: ^AnimationSystem) -> rlib.Rectangle {
+animation_rect :: proc(sys: ^AnimationSystem($Key)) -> rl.Rectangle {
     return sprite(sys.atlas, sys.current_tile)
 }

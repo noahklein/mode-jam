@@ -1,6 +1,6 @@
 package main
 
-import rlib "vendor:raylib"
+import rl "vendor:raylib"
 import "core:math"
 import "core:math/linalg"
 import "core:fmt"
@@ -8,27 +8,33 @@ import "sprites"
 
 EPSILON :: 0.0001
 GRAVITY :: 1000
-FRICTION :: 0.25
+FRICTION :: 0.1
 #assert(FRICTION >= 0 && FRICTION <= 1)
 
 FIXED_DT :: 1.0 / 120
 
 PLAYER_SPEED :: f32(1000.0)
 JUMP_FORCE :: 1000
+JUMP_APEX_TIME :: JUMP_FORCE / GRAVITY
 
 Input :: enum u8 {
     Up, Down,
     Left, Right,
+    Jump,
     ChangeMode,
 }
 
-get_input :: proc() -> (input: bit_set[Input]) {
-         if rlib.IsKeyDown(.UP)    || rlib.IsKeyDown(.W) do input += {.Up}
-    else if rlib.IsKeyDown(.DOWN)  || rlib.IsKeyDown(.S) do input += {.Down}
-         if rlib.IsKeyDown(.LEFT)  || rlib.IsKeyDown(.A) do input += {.Left}
-    else if rlib.IsKeyDown(.RIGHT) || rlib.IsKeyDown(.D) do input += {.Right}
+get_input :: proc(w: World) -> (input: bit_set[Input]) {
+    if w.mode == .Sidescroller && (rl.IsKeyPressed(.UP) || rl.IsKeyPressed(.W)) {
+        input += {.Jump}
+    }
 
-    if rlib.IsKeyPressed(.SPACE) do input += {.ChangeMode}
+         if rl.IsKeyDown(.UP)    || rl.IsKeyDown(.W) do input += {.Up}
+    else if rl.IsKeyDown(.DOWN)  || rl.IsKeyDown(.S) do input += {.Down}
+         if rl.IsKeyDown(.LEFT)  || rl.IsKeyDown(.A) do input += {.Left}
+    else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) do input += {.Right}
+
+    if rl.IsKeyPressed(.SPACE) do input += {.ChangeMode}
 
     return input
 }
@@ -37,10 +43,10 @@ update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     if .ChangeMode in input {
         if w.mode == .TopDown {
             w.mode = .Sidescroller
-            sprites.play(w.player.animation_system, "idle", 2)
+            sprites.play(w.player.animation_system, PlayerAnimation.Idle)
         } else {
             w.mode = .TopDown
-            sprites.play(w.player.animation_system, "forward", 2)
+            sprites.play(w.player.animation_system, PlayerAnimation.Forward)
         }
     }
 
@@ -96,10 +102,10 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     has_move_input := .Left in input || .Right in input
     p_anim := w.player.animation_system
 
-    if w.player.vel == {0, 0} || (p_anim.current_anim == "walk" && !has_move_input) {
-        sprites.play(p_anim, "idle", 2)
+    if w.player.vel == {0, 0} || (p_anim.current_anim == .Walk && !has_move_input) {
+        sprites.play(p_anim, PlayerAnimation.Idle)
     } else if w.player.is_grounded && has_move_input {
-        sprites.play(p_anim, "walk", 1)
+        sprites.play(p_anim, PlayerAnimation.Walk)
     } else {
         // sprites.stop(w.player.animation_system)
         // sprites.play(w.player.animation_system, "walk", 1)
@@ -109,14 +115,14 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     else if .Right in input do w.player.vel.x += PLAYER_SPEED * dt
 
 
+    // @BAD: this should be in the fixed update function.
     w.player.vel.y += GRAVITY * dt
     if w.player.is_grounded {
-        if .Up in input {
+        if .Jump in input {
             w.player.is_grounded = false
             w.player.vel.y = -JUMP_FORCE
             apex_time := abs(w.player.vel.y / GRAVITY)
-            fmt.println("apex", apex_time)
-            sprites.play(p_anim, "jump", apex_time) // @TODO: calculate jump time
+            sprites.play(p_anim, PlayerAnimation.Jump)
         }
     }
 }
@@ -139,21 +145,21 @@ top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         w.player.facing_dir = .East
     }
 
-    sprites.play(w.player.animation_system, "forward", 1)
+    sprites.play(w.player.animation_system, PlayerAnimation.Forward)
 }
 
 Collision :: struct {
     time_entry: f32,
-    point, normal: rlib.Vector2,
+    point, normal: rl.Vector2,
 }
 
-ray_vs_rect :: proc(origin, dir: rlib.Vector2, rect: rlib.Rectangle) -> (Collision, bool) {
-    inv_dir := 1.0 / dir
+ray_vs_rect :: proc(origin, dir: rl.Vector2, rect: rl.Rectangle) -> (Collision, bool) {
+    rect_pos  := rl.Vector2{rect.x, rect.y}
+    rect_size := rl.Vector2{rect.width, rect.height}
 
-    rect_pos  := rlib.Vector2{rect.x, rect.y}
-    rect_size := rlib.Vector2{rect.width, rect.height}
+    inv_dir := 1.0 / dir // Cached
 
-
+    // Time of entry and exit collisions.
     t_near := (rect_pos - origin) * inv_dir
     t_far  := (rect_pos + rect_size - origin) * inv_dir
     if math.is_nan(t_near.x) || math.is_nan(t_near.y) do return {}, false
@@ -178,7 +184,7 @@ ray_vs_rect :: proc(origin, dir: rlib.Vector2, rect: rlib.Rectangle) -> (Collisi
         return {}, false // Ray pointing away from rect.
     }
 
-    contact_normal : rlib.Vector2
+    contact_normal : rl.Vector2
     if t_near.x > t_near.y {
         contact_normal = {1, 0} if inv_dir.x < 0 else {-1, 0}
     } else if t_near.x < t_near.y {
@@ -194,20 +200,20 @@ ray_vs_rect :: proc(origin, dir: rlib.Vector2, rect: rlib.Rectangle) -> (Collisi
 
 // Returns the time of impact between the player and a rectangle.
 // Move player by velocity * collision_time to avoid penetration.
-swept_rect_collision :: proc(player: Player, rect: rlib.Rectangle, dt: f32) -> (Collision, bool) {
+swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Collision, bool) {
     if player.vel == {0, 0} {
         return {}, false
     }
 
-    expanded_rect := rlib.Rectangle{
+    expanded_rect := rl.Rectangle{
         x = rect.x - (player.rect.width  / 2),
         y = rect.y - (player.rect.height / 2),
         width  = rect.width  + player.rect.width,
         height = rect.height + player.rect.height,
     }
 
-    p_pos  := rlib.Vector2{player.rect.x, player.rect.y}
-    p_size := rlib.Vector2{player.rect.width, player.rect.height}
+    p_pos  := rl.Vector2{player.rect.x, player.rect.y}
+    p_size := rl.Vector2{player.rect.width, player.rect.height}
     collision, ok := ray_vs_rect(p_pos + p_size / 2, player.vel * dt, expanded_rect)
     return collision, ok && collision.time_entry >= 0 && collision.time_entry < 1
 }

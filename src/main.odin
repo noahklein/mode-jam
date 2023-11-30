@@ -2,7 +2,7 @@ package main
 
 import "core:fmt"
 import "core:mem"
-import rlib "vendor:raylib"
+import rl "vendor:raylib"
 import "sprites"
 
 GameMode :: enum u8 {
@@ -12,8 +12,8 @@ GameMode :: enum u8 {
 
 World :: struct {
     mode: GameMode,
-    screen: rlib.Vector2,
-    cam : rlib.Camera2D,
+    screen: rl.Vector2,
+    cam : rl.Camera2D,
     player: Player,
     boxes: [dynamic]Box,
 
@@ -25,17 +25,30 @@ World :: struct {
 }
 
 Player :: struct {
-    rect: rlib.Rectangle,
-    vel: rlib.Vector2,
+    rect: rl.Rectangle,
+    vel: rl.Vector2,
     is_grounded: bool,
 
     facing_dir: Direction,
-    animation_system: ^sprites.AnimationSystem,
+    animation_system: ^sprites.AnimationSystem(PlayerAnimation),
+}
+
+PlayerAnimation :: enum {
+    Idle, Walk, Jump, // Sidescroller
+    Forward,          // TopDown
+}
+
+PLAYER_ANIMATIONS := [PlayerAnimation]sprites.Animation{
+    .Idle = {    start_tile = 0,  end_tile = 2,  duration = 2 },
+    .Walk = {    start_tile = 3,  end_tile = 11, duration = 1 },
+    .Jump = {    start_tile = 12, end_tile = 15, duration = JUMP_APEX_TIME },
+
+    .Forward = { start_tile = 16, end_tile = 18, duration = 2},
 }
 
 Direction :: enum { North, East, South, West, }
 
-player_pos :: proc(player: Player) -> rlib.Vector2 {
+player_pos :: proc(player: Player) -> rl.Vector2 {
     return {player.rect.x, player.rect.y}
 }
 
@@ -65,7 +78,7 @@ main :: proc() {
     }
     defer free_all(context.temp_allocator)
 
-    DEFAULT_SCREEN :: rlib.Vector2{1600, 900}
+    DEFAULT_SCREEN :: rl.Vector2{1600, 900}
     world := World{
         screen = DEFAULT_SCREEN,
         cam = { zoom = 5, offset = DEFAULT_SCREEN * 0.5 },
@@ -81,41 +94,34 @@ main :: proc() {
     }
     defer delete(world.boxes)
 
-    rlib.SetConfigFlags({ .VSYNC_HINT })
-    rlib.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
-    defer rlib.CloseWindow()
+    rl.SetConfigFlags({ .VSYNC_HINT })
+    rl.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
+    defer rl.CloseWindow()
 
     world.tex_atlas = {
         tile_size = 16,
-        texture = rlib.LoadTexture("assets/tilemap.png"),
+        texture = rl.LoadTexture("assets/tilemap.png"),
     }
-    defer rlib.UnloadTexture(world.tex_atlas.texture)
+    defer rl.UnloadTexture(world.tex_atlas.texture)
 
-    world.player.animation_system = &sprites.AnimationSystem{
-        current_anim = "",
-        animations = {
-            "idle" = { start_tile = 0, end_tile = 2 },
-            "walk" = { start_tile = 3, end_tile = 11 },
-            "jump" = { start_tile = 12, end_tile = 15 },
-
-            "forward" = { start_tile = 16, end_tile = 18},
-        },
+    world.player.animation_system = &sprites.AnimationSystem(PlayerAnimation){
+        current_anim = .Idle,
+        animations = PLAYER_ANIMATIONS,
         atlas = {
             tile_size = 16,
-            texture = rlib.LoadTexture("assets/player.png"),
+            texture = rl.LoadTexture("assets/player.png"),
         },
     }
-    defer delete(world.player.animation_system.animations)
-    defer rlib.UnloadTexture(world.player.animation_system.atlas.texture)
+    defer rl.UnloadTexture(world.player.animation_system.atlas.texture)
 
-    for !rlib.WindowShouldClose() {
-        dt := rlib.GetFrameTime()
+    for !rl.WindowShouldClose() {
+        dt := rl.GetFrameTime()
 
         when ODIN_DEBUG {
             gui_update(&world)
         }
 
-        input := get_input()
+        input := get_input(world)
         update(&world, input, dt)
         draw(world)
 
@@ -124,40 +130,43 @@ main :: proc() {
 }
 
 draw :: proc(w: World) {
-    rlib.BeginDrawing()
-    defer rlib.EndDrawing()
+    rl.BeginDrawing()
+    defer rl.EndDrawing()
 
-    rlib.ClearBackground(rlib.LIME if w.mode == .Sidescroller else rlib.ORANGE)
+    rl.ClearBackground(rl.GRAY if w.mode == .Sidescroller else rl.ORANGE)
 
-    rlib.BeginMode2D(w.cam)
+    rl.BeginMode2D(w.cam)
     for i in 0..=120 {
         cols := int(w.tex_atlas.texture.width / 16)
         x := 16 * (i % cols)
         y := 16 * (i / cols)
-        rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(i)), {f32(x), f32(y)}, rlib.WHITE)
+        rl.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(i)), {f32(x), f32(y)}, rl.WHITE)
     }
     for box in w.boxes {
-        rlib.DrawRectangleRec(box.rect, box_color(box.mode))
-        // rlib.DrawTextureRec(w.tex_atlas.texture, sprite(w.tex_atlas, 0), {0, 0}, rlib.WHITE)
+        if w.mode in box.mode {
+            // Draw drop shadow first.
+            OFFSET :: 1
+            shadow := rl.Rectangle{ box.rect.x + OFFSET, box.rect.y + OFFSET, box.rect.width, box.rect.height}
+            // rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
+            rl.DrawRectangleRounded(shadow, 0.1, 5, {0, 0, 0, 150})
+        }
+        rl.DrawRectangleRec(box.rect, box_color(box.mode))
     }
 
     player_sprite := sprites.animation_rect(w.player.animation_system)
     if w.player.vel.x < 0 {
         player_sprite.width *= -1
     }
-    rlib.DrawTextureRec(w.player.animation_system.atlas.texture, player_sprite, player_pos(w.player), rlib.WHITE)
-
-    // rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(12)), {f32(-60), f32(-70)}, rlib.WHITE)
-    // rlib.DrawRectangleRounded(w.player.rect, 0.25, 4, rlib.RED)
+    rl.DrawTextureRec(w.player.animation_system.atlas.texture, player_sprite, player_pos(w.player), rl.WHITE)
 
     when ODIN_DEBUG{
         gui_draw(w)
     }
-    rlib.EndMode2D()
+    rl.EndMode2D()
 
 
     FONT :: 10
-    draw_text(10, 10, FONT, "%d FPS; Mode: %v", rlib.GetFPS(), w.mode)
+    draw_text(10, 10, FONT, "%d FPS; Mode: %v", rl.GetFPS(), w.mode)
     draw_text(10, 30, FONT, "Pos: %v", player_pos(w.player))
     draw_text(10, 40, FONT, "Vel:  %v", w.player.vel)
     draw_text(10, 50, FONT, "Grounded:  %v", w.player.is_grounded)
@@ -166,14 +175,14 @@ draw :: proc(w: World) {
 
 draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {
     str := fmt.ctprintf(format, ..args)
-    rlib.DrawText(str, x, y, font_size, rlib.DARKBLUE)
+    rl.DrawText(str, x, y, font_size, rl.DARKBLUE)
 }
 
-box_color :: proc(mode: bit_set[GameMode]) -> rlib.Color {
-    if .Sidescroller in mode && .TopDown in mode do return rlib.PURPLE
-    else if .Sidescroller in mode do return rlib.BLUE
-    else if .TopDown      in mode do return rlib.RED
+box_color :: proc(mode: bit_set[GameMode]) -> rl.Color {
+    if .Sidescroller in mode && .TopDown in mode do return rl.PURPLE
+    else if .Sidescroller in mode do return rl.BLUE
+    else if .TopDown      in mode do return rl.RED
 
     fmt.eprintln("box_color called on Box with empty bit_set[GameMode]")
-    return rlib.BLACK
+    return rl.BLACK
 }

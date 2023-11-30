@@ -1,8 +1,8 @@
 package main
 
-import rlib "vendor:raylib"
+import rl "vendor:raylib"
 
 Box :: struct {
     mode: bit_set[GameMode],
-    rect: rlib.Rectangle,
+    rect: rl.Rectangle,
 }
