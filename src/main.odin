@@ -31,7 +31,6 @@ Player :: struct {
 
     facing_dir: Direction,
     animation_system: ^sprites.AnimationSystem,
-    // anim_state: PlayerAnimationState,
 }
 
 Direction :: enum { North, East, South, West, }
@@ -82,6 +81,7 @@ main :: proc() {
     }
     defer delete(world.boxes)
 
+    rlib.SetConfigFlags({ .VSYNC_HINT })
     rlib.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rlib.CloseWindow()
 
@@ -108,7 +108,6 @@ main :: proc() {
     defer delete(world.player.animation_system.animations)
     defer rlib.UnloadTexture(world.player.animation_system.atlas.texture)
 
-    rlib.SetTargetFPS(60)
     for !rlib.WindowShouldClose() {
         dt := rlib.GetFrameTime()
 

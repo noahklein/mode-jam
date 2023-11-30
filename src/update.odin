@@ -13,7 +13,7 @@ FRICTION :: 0.25
 
 FIXED_DT :: 1.0 / 120
 
-PLAYER_SPEED :: f32(20.0)
+PLAYER_SPEED :: f32(1000.0)
 JUMP_FORCE :: 1000
 
 Input :: enum u8 {
@@ -35,7 +35,13 @@ get_input :: proc() -> (input: bit_set[Input]) {
 
 update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     if .ChangeMode in input {
-        w.mode = .Sidescroller if w.mode == .TopDown else .TopDown
+        if w.mode == .TopDown {
+            w.mode = .Sidescroller
+            sprites.play(w.player.animation_system, "idle", 2)
+        } else {
+            w.mode = .TopDown
+            sprites.play(w.player.animation_system, "forward", 2)
+        }
     }
 
     switch w.mode {
@@ -99,8 +105,8 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         // sprites.play(w.player.animation_system, "walk", 1)
     }
 
-         if .Left  in input do w.player.vel.x -= PLAYER_SPEED
-    else if .Right in input do w.player.vel.x += PLAYER_SPEED
+         if .Left  in input do w.player.vel.x -= PLAYER_SPEED * dt
+    else if .Right in input do w.player.vel.x += PLAYER_SPEED * dt
 
 
     w.player.vel.y += GRAVITY * dt
@@ -116,7 +122,7 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
 }
 
 top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
-    acc := PLAYER_SPEED
+    acc := PLAYER_SPEED * dt
     if .Up in input {
         w.player.vel.y -= acc
         w.player.facing_dir = .North
