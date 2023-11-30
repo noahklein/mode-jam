@@ -7,7 +7,7 @@ import "core:fmt"
 import "sprites"
 
 EPSILON :: 0.0001
-GRAVITY :: -50
+GRAVITY :: 1000
 FRICTION :: 0.25
 #assert(FRICTION >= 0 && FRICTION <= 1)
 
@@ -103,12 +103,14 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     else if .Right in input do w.player.vel.x += PLAYER_SPEED
 
 
-    w.player.vel.y -= GRAVITY
+    w.player.vel.y += GRAVITY * dt
     if w.player.is_grounded {
         if .Up in input {
             w.player.is_grounded = false
             w.player.vel.y = -JUMP_FORCE
-            sprites.play(p_anim, "jump", 0.1) // @TODO: calculate jump time
+            apex_time := abs(w.player.vel.y / GRAVITY)
+            fmt.println("apex", apex_time)
+            sprites.play(p_anim, "jump", apex_time) // @TODO: calculate jump time
         }
     }
 }
@@ -131,7 +133,7 @@ top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         w.player.facing_dir = .East
     }
 
-    // sprites.play(w.player.animation_system, "walk", 1)
+    sprites.play(w.player.animation_system, "forward", 1)
 }
 
 Collision :: struct {

@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:mem"
 import rlib "vendor:raylib"
 import "sprites"
 
@@ -19,6 +20,8 @@ World :: struct {
     tex_atlas: sprites.Atlas,
 
     dt_acc: f32, // For fixed update
+
+    gui: Gui,
 }
 
 Player :: struct {
@@ -40,6 +43,27 @@ player_pos :: proc(player: Player) -> rlib.Vector2 {
 PLAYER_SIZE :: 16
 
 main :: proc() {
+    when ODIN_DEBUG {
+        track: mem.Tracking_Allocator
+        mem.tracking_allocator_init(&track, context.allocator)
+        context.allocator = mem.tracking_allocator(&track)
+
+        defer {
+            if len(track.allocation_map) > 0 {
+                fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
+                for _, entry in track.allocation_map {
+                    fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
+                }
+            }
+            if len(track.bad_free_array) > 0 {
+                fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
+                for entry in track.bad_free_array {
+                    fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
+                }
+            }
+            mem.tracking_allocator_destroy(&track)
+        }
+    }
     defer free_all(context.temp_allocator)
 
     DEFAULT_SCREEN :: rlib.Vector2{1600, 900}
@@ -56,6 +80,7 @@ main :: proc() {
             },
         },
     }
+    defer delete(world.boxes)
 
     rlib.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rlib.CloseWindow()
@@ -70,19 +95,26 @@ main :: proc() {
         current_anim = "",
         animations = {
             "idle" = { start_tile = 0, end_tile = 2 },
-            "walk" = { start_tile = 8, end_tile = 15 },
-            "jump" = { start_tile = 16, end_tile = 20 },
+            "walk" = { start_tile = 3, end_tile = 11 },
+            "jump" = { start_tile = 12, end_tile = 15 },
+
+            "forward" = { start_tile = 16, end_tile = 18},
         },
         atlas = {
             tile_size = 16,
             texture = rlib.LoadTexture("assets/player.png"),
         },
     }
+    defer delete(world.player.animation_system.animations)
     defer rlib.UnloadTexture(world.player.animation_system.atlas.texture)
 
     rlib.SetTargetFPS(60)
     for !rlib.WindowShouldClose() {
         dt := rlib.GetFrameTime()
+
+        when ODIN_DEBUG {
+            gui_update(&world)
+        }
 
         input := get_input()
         update(&world, input, dt)
@@ -106,7 +138,7 @@ draw :: proc(w: World) {
         rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(i)), {f32(x), f32(y)}, rlib.WHITE)
     }
     for box in w.boxes {
-        // rlib.DrawRectangleRec(box.rect, box_color(box.mode))
+        rlib.DrawRectangleRec(box.rect, box_color(box.mode))
         // rlib.DrawTextureRec(w.tex_atlas.texture, sprite(w.tex_atlas, 0), {0, 0}, rlib.WHITE)
     }
 
@@ -118,6 +150,10 @@ draw :: proc(w: World) {
 
     // rlib.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(12)), {f32(-60), f32(-70)}, rlib.WHITE)
     // rlib.DrawRectangleRounded(w.player.rect, 0.25, 4, rlib.RED)
+
+    when ODIN_DEBUG{
+        gui_draw(w)
+    }
     rlib.EndMode2D()
 
 
