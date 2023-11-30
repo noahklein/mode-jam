@@ -119,6 +119,9 @@ main :: proc() {
 
         when ODIN_DEBUG {
             gui_update(&world)
+            if world.gui.is_dragging {
+                dt = 0
+            }
         }
 
         input := get_input(world)
@@ -143,14 +146,19 @@ draw :: proc(w: World) {
         rl.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(i)), {f32(x), f32(y)}, rl.WHITE)
     }
     for box in w.boxes {
+
         if w.mode in box.mode {
             // Draw drop shadow first.
             OFFSET :: 1
             shadow := rl.Rectangle{ box.rect.x + OFFSET, box.rect.y + OFFSET, box.rect.width, box.rect.height}
-            // rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
-            rl.DrawRectangleRounded(shadow, 0.1, 5, {0, 0, 0, 150})
+            rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
         }
-        rl.DrawRectangleRec(box.rect, box_color(box.mode))
+
+        color := box_color(box.mode)
+        if w.mode not_in box.mode {
+            color.a = 200
+        }
+        rl.DrawRectangleRec(box.rect, color)
     }
 
     player_sprite := sprites.animation_rect(w.player.animation_system)
