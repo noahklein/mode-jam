@@ -41,13 +41,7 @@ get_input :: proc(w: World) -> (input: bit_set[Input]) {
 
 update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     if .ChangeMode in input {
-        if w.mode == .TopDown {
-            w.mode = .Sidescroller
-            sprites.play(w.player.animation_system, PlayerAnimation.Idle)
-        } else {
-            w.mode = .TopDown
-            sprites.play(w.player.animation_system, PlayerAnimation.Forward)
-        }
+        change_game_mode(w)
     }
 
     switch w.mode {
@@ -83,6 +77,9 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         collision, ok := swept_rect_collision(w.player, box.rect, dt)
         if !ok {
             continue
+        }
+        if box.is_portal {
+            change_game_mode(w)
         }
 
         w.player.vel += collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
@@ -189,7 +186,7 @@ ray_vs_rect :: proc(origin, dir: rl.Vector2, rect: rl.Rectangle) -> (Collision, 
         contact_normal = {1, 0} if inv_dir.x < 0 else {-1, 0}
     } else if t_near.x < t_near.y {
         contact_normal = {0, 1} if inv_dir.y < 0 else {0, -1}
-    }
+    } // else contact_normal is {0, 0}
 
     return {
         time_entry = t_hit_near,
@@ -216,4 +213,11 @@ swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Co
     p_size := rl.Vector2{player.rect.width, player.rect.height}
     collision, ok := ray_vs_rect(p_pos + p_size / 2, player.vel * dt, expanded_rect)
     return collision, ok && collision.time_entry >= 0 && collision.time_entry < 1
+}
+
+change_game_mode :: proc(w: ^World) {
+    w.mode = inverse_mode(w.mode)
+
+    anim: PlayerAnimation = .Forward if w.mode == .TopDown else .Idle
+    sprites.play(w.player.animation_system, anim)
 }
