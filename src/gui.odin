@@ -85,9 +85,9 @@ gui_draw :: proc(w: World) {
 
 drag_color :: proc(mode: GuiDragMode) -> rl.Color {
     switch mode {
-        case .Both: return rl.PURPLE
+        case .Both:    return rl.PURPLE
         case .Reverse: return rl.BLACK
-        case .Normal: return rl.WHITE
+        case .Normal:  return rl.WHITE
     }
 
     panic("Unsupported drag mode, can't get color")
