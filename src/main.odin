@@ -18,10 +18,9 @@ World :: struct {
     boxes: [dynamic]Box,
 
     tex_atlas: sprites.Atlas,
+    gui: Gui,
 
     dt_acc: f32, // For fixed update
-
-    gui: Gui,
 }
 
 Player :: struct {
@@ -30,10 +29,10 @@ Player :: struct {
     is_grounded: bool,
 
     facing_dir: Direction,
-    animation_system: ^sprites.AnimationSystem(PlayerAnimation),
+    anim: ^sprites.AnimationSystem(PlayerAnimation),
 }
 
-PlayerAnimation :: enum {
+PlayerAnimation :: enum u8 {
     Idle, Walk, Jump, // Sidescroller
     Forward,          // TopDown
 }
@@ -104,15 +103,17 @@ main :: proc() {
     }
     defer rl.UnloadTexture(world.tex_atlas.texture)
 
-    world.player.animation_system = &sprites.AnimationSystem(PlayerAnimation){
-        current_anim = .Idle,
+    world.player.anim = &sprites.AnimationSystem(PlayerAnimation){
         animations = PLAYER_ANIMATIONS,
         atlas = {
             tile_size = 16,
             texture = rl.LoadTexture("assets/player.png"),
         },
     }
-    defer rl.UnloadTexture(world.player.animation_system.atlas.texture)
+    defer rl.UnloadTexture(world.player.anim.atlas.texture)
+    // @HACK: need to switch animations to initialize it properly
+    sprites.play(world.player.anim, PlayerAnimation.Walk)
+    sprites.play(world.player.anim, PlayerAnimation.Idle)
 
     for !rl.WindowShouldClose() {
         dt := rl.GetFrameTime()
@@ -161,11 +162,11 @@ draw :: proc(w: World) {
         rl.DrawRectangleRec(box.rect, color)
     }
 
-    player_sprite := sprites.animation_rect(w.player.animation_system)
+    player_sprite := sprites.animation_rect(w.player.anim)
     if w.player.vel.x < 0 {
         player_sprite.width *= -1
     }
-    rl.DrawTextureRec(w.player.animation_system.atlas.texture, player_sprite, player_pos(w.player), rl.WHITE)
+    rl.DrawTextureRec(w.player.anim.atlas.texture, player_sprite, player_pos(w.player), rl.WHITE)
 
     when ODIN_DEBUG{
         gui_draw(w)
@@ -178,7 +179,7 @@ draw :: proc(w: World) {
     draw_text(10, 30, FONT, "Pos: %v", player_pos(w.player))
     draw_text(10, 40, FONT, "Vel:  %v", w.player.vel)
     draw_text(10, 50, FONT, "Grounded:  %v", w.player.is_grounded)
-    draw_text(10, 60, FONT, "Player anim:  %q", w.player.animation_system.current_anim)
+    draw_text(10, 60, FONT, "Player anim:  %q", w.player.anim.current_anim)
 }
 
 draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {

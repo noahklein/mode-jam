@@ -46,17 +46,9 @@ play :: proc(sys: ^AnimationSystem($Key), key: Key) {
     sys.time_per_frame = anim.duration / f32(anim.end_tile - anim.start_tile)
 }
 
-stop :: proc(sys: ^AnimationSystem($Key)) {
-}
-
 update :: proc(sys: ^AnimationSystem($Key), dt: f32) {
-    if sys.current_anim == nil {
-        return
-    }
-
     anim := sys.animations[sys.current_anim]
     assert(anim.start_tile < anim.end_tile, "animation: start_tile must be less than end_tile")
-    // assert(anim.start_tile <= sys.current_tile && sys.current_tile <= anim.end_tile, "animation: current_tile must be in start_tile..=end_tile")
 
     sys.elapsed += dt
     if sys.elapsed >= sys.time_per_frame {

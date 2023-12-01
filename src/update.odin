@@ -92,20 +92,20 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     w.player.rect.x += w.player.vel.x * dt
     w.player.rect.y += w.player.vel.y * dt
 
-    sprites.update(w.player.animation_system, dt)
+    sprites.update(w.player.anim, dt)
 }
 
 sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     has_move_input := .Left in input || .Right in input
-    p_anim := w.player.animation_system
+    p_anim := w.player.anim
 
     if w.player.vel == {0, 0} || (p_anim.current_anim == .Walk && !has_move_input) {
         sprites.play(p_anim, PlayerAnimation.Idle)
     } else if w.player.is_grounded && has_move_input {
         sprites.play(p_anim, PlayerAnimation.Walk)
     } else {
-        // sprites.stop(w.player.animation_system)
-        // sprites.play(w.player.animation_system, "walk", 1)
+        // sprites.stop(w.player.anim)
+        // sprites.play(w.player.anim, "walk", 1)
     }
 
          if .Left  in input do w.player.vel.x -= PLAYER_SPEED * dt
@@ -142,7 +142,7 @@ top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         w.player.facing_dir = .East
     }
 
-    sprites.play(w.player.animation_system, PlayerAnimation.Forward)
+    sprites.play(w.player.anim, PlayerAnimation.Forward)
 }
 
 Collision :: struct {
@@ -219,5 +219,5 @@ change_game_mode :: proc(w: ^World) {
     w.mode = inverse_mode(w.mode)
 
     anim: PlayerAnimation = .Forward if w.mode == .TopDown else .Idle
-    sprites.play(w.player.animation_system, anim)
+    sprites.play(w.player.anim, anim)
 }
