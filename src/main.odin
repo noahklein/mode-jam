@@ -5,6 +5,8 @@ import "core:mem"
 import rl "vendor:raylib"
 import "sprites"
 
+LEVEL_FILE :: "assets/first.level"
+
 GameMode :: enum u8 {
     Sidescroller,
     TopDown,
@@ -93,7 +95,7 @@ main :: proc() {
     }
     defer delete(world.boxes)
 
-    config_load("first.level", &world)
+    config_load(LEVEL_FILE, &world)
 
     rl.SetConfigFlags({ .VSYNC_HINT })
     rl.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")

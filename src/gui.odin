@@ -28,7 +28,7 @@ gui_update :: proc(w: ^World) {
     else if rl.IsKeyPressed(.TWO) do w.gui.tile_type = .Portal
 
     if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
-        config_save("first.level", w^)
+        config_save(LEVEL_FILE, w^)
     }
 
     if w.gui.tile_type != .Box {
