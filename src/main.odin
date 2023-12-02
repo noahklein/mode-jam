@@ -157,7 +157,10 @@ draw :: proc(w: World) {
         if w.mode in box.mode {
             // Draw drop shadow under object.
             OFFSET :: 1
-            shadow := rl.Rectangle{ box.rect.x + OFFSET, box.rect.y + OFFSET, box.rect.width, box.rect.height}
+            shadow := rl.Rectangle{
+                box.rect.x + OFFSET, box.rect.y + OFFSET,
+                box.rect.width, box.rect.height,
+            }
             rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
         }
 
