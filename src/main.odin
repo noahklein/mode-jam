@@ -42,7 +42,7 @@ PlayerAnimation :: enum u8 {
 PLAYER_ANIMATIONS := [PlayerAnimation]sprites.Animation{
     .Idle = {    start_tile = 0,  end_tile = 2,  duration = 2 },
     .Walk = {    start_tile = 3,  end_tile = 11, duration = 1 },
-    .Jump = {    start_tile = 12, end_tile = 15, duration = JUMP_APEX_TIME },
+    .Jump = {    start_tile = 12, end_tile = 15, duration = 0.8 * JUMP_APEX_TIME },
 
     .Forward = { start_tile = 16, end_tile = 18, duration = 2},
 }
@@ -93,7 +93,6 @@ main :: proc() {
 
     config_load(LEVEL_FILE, &world)
 
-    rl.SetConfigFlags({ .VSYNC_HINT })
     rl.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rl.CloseWindow()
 
@@ -117,6 +116,7 @@ main :: proc() {
     sprites.play(world.player.anim, PlayerAnimation.Walk)
     sprites.play(world.player.anim, PlayerAnimation.Idle)
 
+    rl.SetTargetFPS(60)
     for !rl.WindowShouldClose() {
         dt := rl.GetFrameTime()
 
@@ -143,7 +143,23 @@ draw :: proc(w: World) {
 
     rl.BeginMode2D(w.cam)
 
-    for box in w.boxes {
+    // First draw background boxes.
+    for box in w.boxes do if !box.is_portal && w.mode not_in box.mode {
+        color := box_color(box.mode)
+        rl.DrawRectangleRec(box.rect, color)
+    }
+
+    // Draw drop-shadows under foreground boxes.
+    for box in w.boxes do if !box.is_portal && w.mode in box.mode {
+        OFFSET :: 2
+        shadow := rl.Rectangle{
+            box.rect.x + OFFSET, box.rect.y + OFFSET,
+            box.rect.width, box.rect.height,
+        }
+        rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
+    }
+
+    for box in w.boxes do if w.mode in box.mode {
         // @TODO: cull off-screen boxes
 
         if box.is_portal {
@@ -153,22 +169,7 @@ draw :: proc(w: World) {
             }
             continue
         }
-
-        if w.mode in box.mode {
-            // Draw drop shadow under object.
-            OFFSET :: 1
-            shadow := rl.Rectangle{
-                box.rect.x + OFFSET, box.rect.y + OFFSET,
-                box.rect.width, box.rect.height,
-            }
-            rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
-        }
-
-
         color := box_color(box.mode)
-        if w.mode not_in box.mode {
-            color.a = 200
-        }
         rl.DrawRectangleRec(box.rect, color)
     }
 

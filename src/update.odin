@@ -103,9 +103,8 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         sprites.play(p_anim, PlayerAnimation.Idle)
     } else if w.player.is_grounded && has_move_input {
         sprites.play(p_anim, PlayerAnimation.Walk)
-    } else {
-        // sprites.stop(w.player.anim)
-        // sprites.play(w.player.anim, "walk", 1)
+    } else if w.player.is_grounded {
+        sprites.play(w.player.anim, PlayerAnimation.Idle)
     }
 
          if .Left  in input do w.player.vel.x -= PLAYER_SPEED * dt
