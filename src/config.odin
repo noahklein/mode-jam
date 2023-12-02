@@ -40,7 +40,11 @@ marshal :: proc(writer: io.Writer, world: World) -> MarshalError {
         for m, i in GameMode do if m in mode {
             acc |= 1 << u32(i)
         }
-        fmt.wprintln(writer, "B", rect.x, rect.y, rect.width, rect.height, acc)
+        if is_portal {
+            fmt.wprintln(writer, "P", rect.x, rect.y, rect.width, rect.height, acc)
+        } else {
+            fmt.wprintln(writer, "B", rect.x, rect.y, rect.width, rect.height, acc)
+        }
     }
 
     return nil
@@ -59,6 +63,10 @@ config_load :: proc(path: string, w: ^World) -> UnmarshalError {
         switch tokens[0] {
             case "B":
                 box := parse_box(tokens[1:]) or_return
+                append(&w.boxes, box)
+            case "P":
+                box := parse_box(tokens[1:]) or_return
+                box.is_portal = true
                 append(&w.boxes, box)
         }
     }
