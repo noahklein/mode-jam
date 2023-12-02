@@ -202,15 +202,18 @@ swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Co
         return {}, false
     }
 
+    PADDING :: 2.0
+    p_pos  := rl.Vector2{player.rect.x, player.rect.y} + PADDING / 2
+    p_size := rl.Vector2{player.rect.width, player.rect.height} - PADDING
+
     expanded_rect := rl.Rectangle{
-        x = rect.x - (player.rect.width  / 2),
-        y = rect.y - (player.rect.height / 2),
-        width  = rect.width  + player.rect.width,
-        height = rect.height + player.rect.height,
+        x = rect.x - (p_size.x / 2),
+        y = rect.y - (p_size.y / 2),
+        width  = rect.width  + p_size.x,
+        height = rect.height + p_size.y,
     }
 
-    p_pos  := rl.Vector2{player.rect.x, player.rect.y}
-    p_size := rl.Vector2{player.rect.width, player.rect.height}
+
     collision, ok := ray_vs_rect(p_pos + p_size / 2, player.vel * dt, expanded_rect)
     return collision, ok && collision.time_entry >= 0 && collision.time_entry < 1
 }

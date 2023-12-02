@@ -83,16 +83,12 @@ main :: proc() {
     world := World{
         screen = DEFAULT_SCREEN,
         cam = { zoom = 5, offset = DEFAULT_SCREEN * 0.5 },
+        mode = .TopDown,
         player = {
             rect = { height = PLAYER_SIZE, width = PLAYER_SIZE },
         },
-        boxes = {
-            {
-                mode = {.Sidescroller, .TopDown},
-                rect = {x = 100, y = 100, height = 20, width = 20},
-            },
-        },
     }
+    reserve(&world.boxes, 1024)
     defer delete(world.boxes)
 
     config_load(LEVEL_FILE, &world)
@@ -195,10 +191,12 @@ draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {
 }
 
 box_color :: proc(mode: bit_set[GameMode]) -> rl.Color {
-    if .Sidescroller in mode && .TopDown in mode do return rl.PURPLE
-    else if .Sidescroller in mode do return rl.BLUE
-    else if .TopDown      in mode do return rl.RED
+    switch mode {
+        case {.Sidescroller, .TopDown}: return rl.PURPLE
+        case {.Sidescroller}:           return rl.BLUE
+        case {.TopDown}:                return rl.RED
 
-    fmt.eprintln("box_color called on Box with empty bit_set[GameMode]")
-    return rl.BLACK
+    }
+
+    panic("box_color called on Box with empty bit_set[GameMode]")
 }
