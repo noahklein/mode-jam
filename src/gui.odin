@@ -11,6 +11,8 @@ Gui :: struct {
     tile_type: GuiTileType,
 
     selected_box: int,
+
+    hide_grid: bool,
 }
 
 GuiDragMode :: enum u8 { Normal, Reverse, Both }
@@ -29,6 +31,10 @@ gui_update :: proc(w: ^World) {
 
     if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
         config_save(LEVEL_FILE, w^)
+    }
+
+    if rl.IsKeyPressed(.G) {
+        w.gui.hide_grid = !w.gui.hide_grid
     }
 
     if w.gui.tile_type != .Box {
@@ -88,7 +94,10 @@ gui_update :: proc(w: ^World) {
 mouse_grid_tile : rl.Vector2
 gui_draw2d :: proc(w: World) {
     GRID_SIZE :: PLAYER_SIZE * 300
-    rl.GuiGrid({-GRID_SIZE, -GRID_SIZE, 2 * GRID_SIZE, 2 * GRID_SIZE}, "grid", PLAYER_SIZE, 1, &mouse_grid_tile)
+    if !w.gui.hide_grid {
+        rect := rl.Rectangle{-GRID_SIZE, -GRID_SIZE, 2 * GRID_SIZE, 2 * GRID_SIZE}
+        rl.GuiGrid(rect, "grid", PLAYER_SIZE, 1, &mouse_grid_tile)
+    }
 
     mouse := mouse_to_world(w.cam)
     hovered := snap_down_mouse(mouse)

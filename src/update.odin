@@ -203,8 +203,8 @@ swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Co
     }
 
     PADDING :: 2.0
-    p_pos  := rl.Vector2{player.rect.x, player.rect.y} + PADDING / 2
-    p_size := rl.Vector2{player.rect.width, player.rect.height} - PADDING
+    p_pos  := rl.Vector2{player.rect.x + PADDING / 2, player.rect.y}
+    p_size := rl.Vector2{player.rect.width - PADDING, player.rect.height}
 
     expanded_rect := rl.Rectangle{
         x = rect.x - (p_size.x / 2),
