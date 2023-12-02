@@ -93,13 +93,17 @@ main :: proc() {
     }
     defer delete(world.boxes)
 
+    config_load("first.level", &world)
+
     rl.SetConfigFlags({ .VSYNC_HINT })
     rl.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rl.CloseWindow()
 
+    rl.GuiEnable()
+
     world.tex_atlas = {
         tile_size = 16,
-        texture = rl.LoadTexture("assets/tilemap.png"),
+        texture = rl.LoadTexture("assets/Environment.png"),
     }
     defer rl.UnloadTexture(world.tex_atlas.texture)
 
@@ -140,20 +144,25 @@ draw :: proc(w: World) {
     rl.ClearBackground(rl.GRAY if w.mode == .Sidescroller else rl.ORANGE)
 
     rl.BeginMode2D(w.cam)
-    for i in 0..=120 {
-        cols := int(w.tex_atlas.texture.width / 16)
-        x := 16 * (i % cols)
-        y := 16 * (i / cols)
-        rl.DrawTextureRec(w.tex_atlas.texture, sprites.sprite(w.tex_atlas, i32(i)), {f32(x), f32(y)}, rl.WHITE)
-    }
+
     for box in w.boxes {
+        // @TODO: cull off-screen boxes
+
+        if box.is_portal {
+            if w.mode in box.mode {
+                rect := sprites.sprite(w.tex_atlas, 0)
+                rl.DrawTextureRec(w.tex_atlas.texture, rect, {box.rect.x, box.rect.y}, rl.WHITE)
+            }
+            continue
+        }
 
         if w.mode in box.mode {
-            // Draw drop shadow first.
+            // Draw drop shadow under object.
             OFFSET :: 1
             shadow := rl.Rectangle{ box.rect.x + OFFSET, box.rect.y + OFFSET, box.rect.width, box.rect.height}
             rl.DrawRectangleRec(shadow, {0, 0, 0, 150})
         }
+
 
         color := box_color(box.mode)
         if w.mode not_in box.mode {
@@ -169,17 +178,13 @@ draw :: proc(w: World) {
     rl.DrawTextureRec(w.player.anim.atlas.texture, player_sprite, player_pos(w.player), rl.WHITE)
 
     when ODIN_DEBUG{
-        gui_draw(w)
+        gui_draw2d(w)
     }
     rl.EndMode2D()
 
-
-    FONT :: 10
-    draw_text(10, 10, FONT, "%d FPS; Mode: %v", rl.GetFPS(), w.mode)
-    draw_text(10, 30, FONT, "Pos: %v", player_pos(w.player))
-    draw_text(10, 40, FONT, "Vel:  %v", w.player.vel)
-    draw_text(10, 50, FONT, "Grounded:  %v", w.player.is_grounded)
-    draw_text(10, 60, FONT, "Player anim:  %q", w.player.anim.current_anim)
+    when ODIN_DEBUG {
+        gui_draw(w)
+    }
 }
 
 draw_text :: proc(x, y, font_size: i32, format: string, args: ..any) {

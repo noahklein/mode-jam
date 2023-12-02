@@ -9,18 +9,14 @@ Gui :: struct {
     drag_start: rl.Vector2,
     drag_mode: GuiDragMode,
     tile_type: GuiTileType,
+
+    selected_box: int,
 }
 
 GuiDragMode :: enum u8 { Normal, Reverse, Both }
 GuiTileType :: enum u8 { Box, Portal }
 
 gui_update :: proc(w: ^World) {
-    mouse := mouse_to_world(w.cam)
-    if rl.IsMouseButtonPressed(.LEFT) {
-        w.gui.drag_start = mouse
-        w.gui.is_dragging = true
-    }
-
     both := rl.IsKeyDown(.LEFT_CONTROL)
     reverse := !both && rl.IsKeyDown(.LEFT_SHIFT)
 
@@ -31,49 +27,61 @@ gui_update :: proc(w: ^World) {
     if rl.IsKeyPressed(.ONE) do w.gui.tile_type = .Box
     else if rl.IsKeyPressed(.TWO) do w.gui.tile_type = .Portal
 
+    if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
+        config_save("first.level", w^)
+    }
+
+    if w.gui.tile_type != .Box {
+        w.gui.is_dragging = false // Can only drag in box mode.
+    }
+
+    modes : bit_set[GameMode]
+    switch w.gui.drag_mode {
+        case .Both:    modes = {.Sidescroller, .TopDown}
+        case .Reverse: modes = {inverse_mode(w.mode)}
+        case .Normal:  modes = {w.mode}
+    }
+
+    mouse := mouse_to_world(w.cam)
+    if rl.IsMouseButtonPressed(.LEFT) {
+        switch w.gui.tile_type {
+            case .Portal:
+                hovered := snap_down_mouse(mouse)
+                append(&w.boxes, Box{
+                    mode = modes,
+                    rect = {hovered.x, hovered.y, PLAYER_SIZE, PLAYER_SIZE},
+                    is_portal = true,
+                })
+            case .Box:
+                w.gui.drag_start = snap_down_mouse(mouse)
+                w.gui.is_dragging = true
+        }
+    }
+
     if rl.IsMouseButtonReleased(.LEFT) && w.gui.is_dragging {
         defer w.gui.is_dragging = false
 
-        snapped := [2]i32{
-            round_to_multiple(i32(mouse.x - w.gui.drag_start.x), PLAYER_SIZE),
-            round_to_multiple(i32(mouse.y - w.gui.drag_start.y), PLAYER_SIZE),
-        }
-        end := w.gui.drag_start + {f32(snapped.x), f32(snapped.y)}
-        rect := normalize_rect(w.gui.drag_start, end)
+        hovered := snap_up_mouse(mouse)
+        rect := normalize_rect(w.gui.drag_start, {f32(hovered.x), f32(hovered.y)})
         if rect.width == 0 || rect.height == 0 {
             return
         }
 
-        modes : bit_set[GameMode]
-        switch w.gui.drag_mode {
-            case .Both:    modes = {.Sidescroller, .TopDown}
-            case .Reverse: modes = {inverse_mode(w.mode)}
-            case .Normal:  modes = {w.mode}
-        }
-
-        append(&w.boxes, Box{
-            mode = modes,
-            rect = rect,
-            is_portal = w.gui.tile_type == .Portal,
-        })
+        append(&w.boxes, Box{ mode = modes, rect = rect })
     }
 }
 
-gui_draw :: proc(w: World) {
+mouse_grid_tile : rl.Vector2
+gui_draw2d :: proc(w: World) {
+    GRID_SIZE :: PLAYER_SIZE * 300
+    rl.GuiGrid({-GRID_SIZE, -GRID_SIZE, 2 * GRID_SIZE, 2 * GRID_SIZE}, "grid", PLAYER_SIZE, 1, &mouse_grid_tile)
+
     mouse := mouse_to_world(w.cam)
+    hovered := snap_down_mouse(mouse)
+    rl.DrawRectangle(i32(hovered.x), i32(hovered.y), PLAYER_SIZE, PLAYER_SIZE, drag_color(w.gui.drag_mode))
 
-    if w.gui.tile_type == .Portal {
-        mouse_tile := snap_to_grid(mouse, PLAYER_SIZE)
-        rl.DrawRectangleLinesEx({mouse_tile.x, mouse_tile.y, PLAYER_SIZE, PLAYER_SIZE}, 2, drag_color(w.gui.drag_mode))
-        return
-    }
-
-    if w.gui.is_dragging {
-        snapped := snap_to_grid(mouse - w.gui.drag_start, PLAYER_SIZE)
-
-        end := w.gui.drag_start + snapped
-        rect_outline := normalize_rect(w.gui.drag_start, end)
-
+    if w.gui.tile_type != .Portal && w.gui.is_dragging {
+        rect_outline := normalize_rect(w.gui.drag_start, snap_up_mouse(mouse))
         rl.DrawRectangleLinesEx(rect_outline, 2, drag_color(w.gui.drag_mode))
 
         coord_text := fmt.ctprintf("%v, %v", rect_outline.width, rect_outline.height)
@@ -81,6 +89,19 @@ gui_draw :: proc(w: World) {
         more_info := fmt.ctprintf("%v, %v", w.gui.drag_mode, w.gui.tile_type)
         rl.DrawText(more_info, i32(mouse.x + 1), i32(mouse.y + 8), 1, rl.WHITE)
     }
+}
+
+gui_draw :: proc(w: World) {
+    FONT :: 10
+    X :: 10
+    Y :: 10
+    TITLE :: 18
+    rl.GuiPanel({0, 0, 200, 10 * Y}, fmt.ctprintf("Mode: %v", w.mode))
+    draw_text(X, 1 * Y + TITLE, FONT, "%d FPS", rl.GetFPS())
+    draw_text(X, 2 * Y + TITLE, FONT, "Pos: %v", player_pos(w.player))
+    draw_text(X, 3 * Y + TITLE, FONT, "Vel:  %v", w.player.vel)
+    draw_text(X, 4 * Y + TITLE, FONT, "Grounded:  %v", w.player.is_grounded)
+    draw_text(X, 5 * Y + TITLE, FONT, "Player anim:  %q", w.player.anim.current_anim)
 }
 
 drag_color :: proc(mode: GuiDragMode) -> rl.Color {
@@ -108,19 +129,40 @@ normalize_rect :: #force_inline proc(a, b: rl.Vector2) -> rl.Rectangle {
 }
 
 @(require_results)
-round_to_multiple :: #force_inline proc(n: i32, $mult: i32) -> i32 {
-    #assert(mult != 0)
+round_to_multiple :: #force_inline proc(n: i32, $mult: i32) -> i32
+    where mult > 0 {
     return ((n + mult / 2) / mult) * mult
 }
 
 @(require_results)
-snap_to_grid :: #force_inline proc(v: rl.Vector2, $tile_size: i32) -> rl.Vector2 {
-    return {
-        f32(round_to_multiple(i32(v.x), tile_size)),
-        f32(round_to_multiple(i32(v.y), tile_size)),
-    }
-}
-
 inverse_mode :: #force_inline proc(mode: GameMode) -> GameMode {
     return .Sidescroller if mode == .TopDown else .TopDown
+}
+
+@(require_results)
+snap_down :: #force_inline proc(i: i32) -> i32 {
+    if i < 0 {
+        return ((i - PLAYER_SIZE + 1) / PLAYER_SIZE) * PLAYER_SIZE
+    }
+
+    return (i / PLAYER_SIZE) * PLAYER_SIZE
+}
+
+@(require_results)
+snap_up :: #force_inline proc(i: i32) -> i32 {
+    if i < 0 {
+        return (i / PLAYER_SIZE) * PLAYER_SIZE
+    }
+
+    return ((i + PLAYER_SIZE - 1) / PLAYER_SIZE) * PLAYER_SIZE
+}
+
+@(require_results)
+snap_down_mouse :: #force_inline proc(m: rl.Vector2) -> rl.Vector2 {
+    return { f32(snap_down(i32(m.x))), f32(snap_down(i32(m.y))) }
+}
+
+@(require_results)
+snap_up_mouse :: #force_inline proc(m: rl.Vector2) -> rl.Vector2 {
+    return { f32(snap_up(i32(m.x))), f32(snap_up(i32(m.y))) }
 }

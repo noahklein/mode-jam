@@ -8,6 +8,7 @@ Atlas :: struct {
     texture: rl.Texture,
 }
 
+@(require_results)
 sprite :: proc(using atlas: Atlas, tile_id: i32) -> (rl.Rectangle) {
     rows := texture.width / tile_size
     x, y := tile_id % rows, tile_id / rows
