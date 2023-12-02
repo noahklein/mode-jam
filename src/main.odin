@@ -121,7 +121,7 @@ main :: proc() {
         dt := rl.GetFrameTime()
 
         when ODIN_DEBUG {
-            gui_update(&world)
+            gui_update(&world, dt)
             if world.gui.is_dragging {
                 dt = 0
             }

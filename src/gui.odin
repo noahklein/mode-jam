@@ -9,16 +9,18 @@ Gui :: struct {
     drag_start: rl.Vector2,
     drag_mode: GuiDragMode,
     tile_type: GuiTileType,
+    status: GuiStatus,
 
     selected_box: int,
 
     hide_grid: bool,
 }
 
+
 GuiDragMode :: enum u8 { Normal, Reverse, Both }
 GuiTileType :: enum u8 { Box, Portal }
 
-gui_update :: proc(w: ^World) {
+gui_update :: proc(w: ^World, dt: f32) {
     both := rl.IsKeyDown(.LEFT_CONTROL)
     reverse := !both && rl.IsKeyDown(.LEFT_SHIFT)
 
@@ -30,12 +32,29 @@ gui_update :: proc(w: ^World) {
     else if rl.IsKeyPressed(.TWO) do w.gui.tile_type = .Portal
 
     if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
-        config_save(LEVEL_FILE, w^)
+        err := config_save(LEVEL_FILE, w^)
+        if err != nil {
+            fmt.eprintln("Failed to save level:", err)
+            gui_status(&w.gui.status, "Error! Failed to save level " + LEVEL_FILE)
+        } else {
+            gui_status(&w.gui.status, "Saved level to " + LEVEL_FILE)
+        }
+
     }
 
     if rl.IsKeyPressed(.G) {
         w.gui.hide_grid = !w.gui.hide_grid
     }
+
+    // Update status bar timer.
+    if w.gui.status.msg != "" {
+        w.gui.status.elapsed -= dt
+        if w.gui.status.elapsed <= 0 {
+            w.gui.status.elapsed = 0
+            w.gui.status.msg = ""
+        }
+    }
+
 
     if w.gui.tile_type != .Box {
         w.gui.is_dragging = false // Can only drag in box mode.
@@ -125,6 +144,11 @@ gui_draw :: proc(w: World) {
     draw_text(X, 3 * Y + TITLE, FONT, "Vel:  %v", w.player.vel)
     draw_text(X, 4 * Y + TITLE, FONT, "Grounded:  %v", w.player.is_grounded)
     draw_text(X, 5 * Y + TITLE, FONT, "Player anim:  %q", w.player.anim.current_anim)
+
+    if w.gui.status.msg != "" {
+        STATUS_HEIGHT :: 25
+        rl.GuiStatusBar({0, w.screen.y - STATUS_HEIGHT, w.screen.x, STATUS_HEIGHT}, w.gui.status.msg)
+    }
 }
 
 drag_color :: proc(mode: GuiDragMode) -> rl.Color {
@@ -188,4 +212,14 @@ snap_down_mouse :: #force_inline proc(m: rl.Vector2) -> rl.Vector2 {
 @(require_results)
 snap_up_mouse :: #force_inline proc(m: rl.Vector2) -> rl.Vector2 {
     return { f32(snap_up(i32(m.x))), f32(snap_up(i32(m.y))) }
+}
+
+GuiStatus :: struct {
+    msg: cstring,
+    elapsed: f32,
+}
+
+gui_status :: proc(status: ^GuiStatus, msg: cstring) {
+    status.msg = msg
+    status.elapsed = 3
 }
