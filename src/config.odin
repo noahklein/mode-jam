@@ -7,7 +7,7 @@ import "core:runtime"
 import "core:strings"
 import "core:strconv"
 
-MarshalDataError :: enum { None, FileOpen, NoWriter }
+MarshalDataError :: enum { None, FileOpen, NoWriter, TruncateFile }
 MarshalError     :: union { io.Error, MarshalDataError }
 
 
@@ -23,6 +23,9 @@ config_save :: proc(path: string, w: World) -> MarshalError {
         return .FileOpen
     }
     defer os.close(file)
+    if ok := os.write_entire_file(path, nil); !ok {
+        return .TruncateFile
+    }
 
     writer, ok := io.to_writer(os.stream_from_handle(file))
     if !ok {

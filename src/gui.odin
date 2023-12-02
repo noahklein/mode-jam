@@ -43,6 +43,20 @@ gui_update :: proc(w: ^World) {
     }
 
     mouse := mouse_to_world(w.cam)
+    if rl.IsMouseButtonPressed(.RIGHT) {
+        // Delete hovered box
+        for box, i in w.boxes {
+            if rl.CheckCollisionPointRec(mouse, box.rect) {
+                unordered_remove(&w.boxes, i)
+                break
+            }
+        }
+    }
+    if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyPressed(.Z) {
+        if len(w.boxes) > 0 do pop(&w.boxes)
+    }
+
+
     if rl.IsMouseButtonPressed(.LEFT) {
         switch w.gui.tile_type {
             case .Portal:
