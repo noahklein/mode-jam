@@ -37,8 +37,8 @@ Player :: struct {
 }
 
 PlayerAnimation :: enum u8 {
-    Idle, Walk, Jump, // Sidescroller
-    Forward,          // TopDown
+    Idle, Walk, Jump,        // Sidescroller
+    Forward, Back, Right,    // TopDown
 }
 
 PLAYER_ANIMATIONS := [PlayerAnimation]sprites.Animation{
@@ -46,7 +46,9 @@ PLAYER_ANIMATIONS := [PlayerAnimation]sprites.Animation{
     .Walk = {    start_tile = 3,  end_tile = 11, duration = 1 },
     .Jump = {    start_tile = 12, end_tile = 15, duration = 0.8 * JUMP_APEX_TIME },
 
-    .Forward = { start_tile = 16, end_tile = 18, duration = 2},
+    .Forward = { start_tile = 16, end_tile = 19, duration = 2},
+    .Back    = { start_tile = 20, end_tile = 23, duration = 2},
+    .Right   = { start_tile = 24, end_tile = 24, duration = 2},
 }
 
 Direction :: enum { North, East, South, West, }
@@ -117,7 +119,7 @@ main :: proc() {
     defer rl.UnloadTexture(world.player.anim.atlas.texture)
     // @HACK: need to switch animations to initialize it properly
     sprites.play(world.player.anim, PlayerAnimation.Walk)
-    sprites.play(world.player.anim, PlayerAnimation.Idle)
+    sprites.play(world.player.anim, PlayerAnimation.Forward)
 
     rl.SetTargetFPS(60)
     for !rl.WindowShouldClose() {

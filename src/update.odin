@@ -145,20 +145,22 @@ top_down_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     if .Up in input {
         w.player.vel.y -= acc
         w.player.facing_dir = .North
+        sprites.play(w.player.anim, PlayerAnimation.Back)
     } else if .Down in input {
         w.player.vel.y += acc
         w.player.facing_dir = .South
+        sprites.play(w.player.anim, PlayerAnimation.Forward)
     }
 
     if .Left in input {
         w.player.vel.x -= acc
         w.player.facing_dir = .West
+        sprites.play(w.player.anim, PlayerAnimation.Right)
     } else if .Right in input {
         w.player.vel.x += acc
         w.player.facing_dir = .East
+        sprites.play(w.player.anim, PlayerAnimation.Right)
     }
-
-    sprites.play(w.player.anim, PlayerAnimation.Forward)
 }
 
 Collision :: struct {
