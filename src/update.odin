@@ -73,7 +73,7 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     w.player.vel *= 1 - FRICTION
 
     // Resolve box collisions.
-    for &box in w.boxes do if w.mode in box.mode {
+    for &box, box_id in w.boxes do if w.mode in box.mode {
         collision := swept_rect_collision(w.player.rect, box.rect, w.player.vel, dt) or_continue
 
         switch box.type {
@@ -93,7 +93,8 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
 
             box.rect.x -= delta_v.x
             box.rect.y -= delta_v.y
-            for wall in w.boxes do if wall.type == .Wall {
+            for wall, wall_id in w.boxes do if wall.type == .Wall || wall.type == .Push {
+                if box_id == wall_id { continue }
                 if rl.CheckCollisionRecs(box.rect, wall.rect) {
                     box.rect.x += delta_v.x
                     box.rect.y += delta_v.y
