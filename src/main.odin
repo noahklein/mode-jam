@@ -186,7 +186,7 @@ draw :: proc(w: World) {
                 rl.DrawTexturePro(w.tex_atlas.texture, rect, midpoint, rot_origin, frame_count, rl.WHITE)
             }
         }
-      }
+    }
 
     player_sprite := sprites.animation_rect(w.player.anim)
     if w.player.vel.x < 0 {

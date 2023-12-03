@@ -74,10 +74,7 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
 
     // Resolve box collisions.
     for &box in w.boxes do if w.mode in box.mode {
-        collision, ok := swept_rect_collision(w.player, box.rect, dt)
-        if !ok {
-            continue
-        }
+        collision := swept_rect_collision(w.player.rect, box.rect, w.player.vel, dt) or_continue
 
         switch box.type {
         case .Portal: change_game_mode(w)
@@ -89,14 +86,21 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
             }
 
         case .Push:
-            delta_v := collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
-            w.player.vel += delta_v
+            delta_v := collision.normal * PLAYER_SIZE_V
             if collision.normal.y == -1 {
                 w.player.is_grounded = true
             }
-            delta_v *= dt * 5
+
             box.rect.x -= delta_v.x
             box.rect.y -= delta_v.y
+            for wall in w.boxes do if wall.type == .Wall {
+                if rl.CheckCollisionRecs(box.rect, wall.rect) {
+                    box.rect.x += delta_v.x
+                    box.rect.y += delta_v.y
+
+                    w.player.vel += collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
+                }
+            }
         }
     }
 
@@ -208,23 +212,24 @@ ray_vs_rect :: proc(origin, dir: rl.Vector2, rect: rl.Rectangle) -> (Collision, 
 
 // Returns the time of impact between the player and a rectangle.
 // Move player by velocity * collision_time to avoid penetration.
-swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Collision, bool) {
-    if player.vel == {0, 0} {
+swept_rect_collision :: proc(obj, obstacle: rl.Rectangle, vel: rl.Vector2, dt: f32) -> (Collision, bool) {
+    if vel == {0, 0} {
         return {}, false
     }
 
+    // @TODO: Move padding out of this function, this is player specific.
     PADDING :: 2.0
-    p_pos  := rl.Vector2{player.rect.x + PADDING / 2, player.rect.y + PADDING / 2}
-    p_size := rl.Vector2{player.rect.width - PADDING, player.rect.height - PADDING}
+    p_pos  := rl.Vector2{obj.x + PADDING / 2, obj.y + PADDING / 2}
+    p_size := rl.Vector2{obj.width - PADDING, obj.height - PADDING}
 
     expanded_rect := rl.Rectangle{
-        x = rect.x - (p_size.x / 2),
-        y = rect.y - (p_size.y / 2),
-        width  = rect.width  + p_size.x,
-        height = rect.height + p_size.y,
+        x = obstacle.x - (p_size.x / 2),
+        y = obstacle.y - (p_size.y / 2),
+        width  = obstacle.width  + p_size.x,
+        height = obstacle.height + p_size.y,
     }
 
-    collision, ok := ray_vs_rect(p_pos + p_size / 2, player.vel * dt, expanded_rect)
+    collision, ok := ray_vs_rect(p_pos + p_size / 2, vel * dt, expanded_rect)
     return collision, ok && collision.time_entry >= 0 && collision.time_entry < 1
 }
 
