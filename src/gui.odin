@@ -69,11 +69,15 @@ gui_update :: proc(w: ^World, dt: f32) {
 
     mouse := mouse_to_world(w.cam)
     if rl.IsMouseButtonPressed(.RIGHT) {
-        // Delete hovered box
-        for box, i in w.boxes {
-            if rl.CheckCollisionPointRec(mouse, box.rect) {
-                unordered_remove(&w.boxes, i)
-                break
+        if w.gui.is_dragging {
+            w.gui.is_dragging = false // Cancel drag.
+        } else {
+            // Delete hovered box
+            for box, i in w.boxes {
+                if rl.CheckCollisionPointRec(mouse, box.rect) {
+                    unordered_remove(&w.boxes, i)
+                    break
+                }
             }
         }
     }
@@ -95,7 +99,7 @@ gui_update :: proc(w: ^World, dt: f32) {
         }
     }
 
-    if rl.IsMouseButtonReleased(.LEFT) && w.gui.is_dragging {
+    if w.gui.is_dragging && rl.IsMouseButtonReleased(.LEFT) {
         defer w.gui.is_dragging = false
 
         hovered := snap_up_mouse(mouse)
