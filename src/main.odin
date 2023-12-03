@@ -2,10 +2,12 @@ package main
 
 import "core:fmt"
 import "core:mem"
+import "core:math"
 import rl "vendor:raylib"
 import "sprites"
 
 LEVEL_FILE :: "assets/first.level"
+frame_count : f32
 
 GameMode :: enum u8 {
     Sidescroller,
@@ -119,6 +121,7 @@ main :: proc() {
     rl.SetTargetFPS(60)
     for !rl.WindowShouldClose() {
         dt := rl.GetFrameTime()
+        frame_count += 1
 
         when ODIN_DEBUG {
             gui_update(&world, dt)
@@ -144,13 +147,13 @@ draw :: proc(w: World) {
     rl.BeginMode2D(w.cam)
 
     // First draw background boxes.
-    for box in w.boxes do if !box.is_portal && w.mode not_in box.mode {
+    for box in w.boxes do if box.type != .Portal && w.mode not_in box.mode {
         color := box_color(box.mode)
         rl.DrawRectangleRec(box.rect, color)
     }
 
     // Draw drop-shadows under foreground boxes.
-    for box in w.boxes do if !box.is_portal && w.mode in box.mode {
+    for box in w.boxes do if box.type != .Portal && w.mode in box.mode {
         OFFSET :: 2
         shadow := rl.Rectangle{
             box.rect.x + OFFSET, box.rect.y + OFFSET,
@@ -162,16 +165,27 @@ draw :: proc(w: World) {
     for box in w.boxes do if w.mode in box.mode {
         // @TODO: cull off-screen boxes
 
-        if box.is_portal {
+        switch box.type {
+        case .Wall:
+            color := box_color(box.mode)
+            rl.DrawRectangleRec(box.rect, color)
+        case .Push:
+            rect := sprites.sprite(w.tex_atlas, 4)
+            rl.DrawTextureRec(w.tex_atlas.texture, rect, {box.rect.x, box.rect.y}, rl.WHITE)
+        case .Portal:
             if w.mode in box.mode {
                 rect := sprites.sprite(w.tex_atlas, 0)
-                rl.DrawTextureRec(w.tex_atlas.texture, rect, {box.rect.x, box.rect.y}, rl.WHITE)
+                // Rotate portals around their midpoints.
+                midpoint := rl.Rectangle{
+                    box.rect.x + box.rect.width / 2,
+                    box.rect.y + box.rect.height / 2,
+                    box.rect.width, box.rect.height,
+                }
+                rot_origin := rl.Vector2{midpoint.width / 2, midpoint.height / 2}
+                rl.DrawTexturePro(w.tex_atlas.texture, rect, midpoint, rot_origin, frame_count, rl.WHITE)
             }
-            continue
         }
-        color := box_color(box.mode)
-        rl.DrawRectangleRec(box.rect, color)
-    }
+      }
 
     player_sprite := sprites.animation_rect(w.player.anim)
     if w.player.vel.x < 0 {

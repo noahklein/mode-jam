@@ -43,10 +43,14 @@ marshal :: proc(writer: io.Writer, world: World) -> MarshalError {
         for m, i in GameMode do if m in mode {
             acc |= 1 << u32(i)
         }
-        if is_portal {
+
+        switch type {
+        case .Portal:
             fmt.wprintln(writer, "P", rect.x, rect.y, rect.width, rect.height, acc)
-        } else {
+        case .Wall:
             fmt.wprintln(writer, "B", rect.x, rect.y, rect.width, rect.height, acc)
+        case .Push:
+            fmt.wprintln(writer, "X", rect.x, rect.y, rect.width, rect.height, acc)
         }
     }
 
@@ -64,13 +68,20 @@ config_load :: proc(path: string, w: ^World) -> UnmarshalError {
         tokens := strings.split(line, " ", context.temp_allocator)
         assert(len(tokens) > 0, "Empty line")
         switch tokens[0] {
-            case "B":
-                box := parse_box(tokens[1:]) or_return
-                append(&w.boxes, box)
-            case "P":
-                box := parse_box(tokens[1:]) or_return
-                box.is_portal = true
-                append(&w.boxes, box)
+        case "B":
+            box := parse_box(tokens[1:]) or_return
+            append(&w.boxes, box)
+        case "P":
+            box := parse_box(tokens[1:]) or_return
+            box.type = .Portal
+            append(&w.boxes, box)
+        case "X":
+            box := parse_box(tokens[1:]) or_return
+            box.type = .Push
+            append(&w.boxes, box)
+        case "":
+        case:
+            fmt.panicf("Unrecognized box type in level %q: %q", path, tokens[0])
         }
     }
 

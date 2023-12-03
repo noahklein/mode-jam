@@ -8,7 +8,7 @@ Gui :: struct {
     is_dragging: bool,
     drag_start: rl.Vector2,
     drag_mode: GuiDragMode,
-    tile_type: GuiTileType,
+    tile_type: BoxType,
     status: GuiStatus,
 
     selected_box: int,
@@ -18,7 +18,6 @@ Gui :: struct {
 
 
 GuiDragMode :: enum u8 { Normal, Reverse, Both }
-GuiTileType :: enum u8 { Box, Portal }
 
 gui_update :: proc(w: ^World, dt: f32) {
     both := rl.IsKeyDown(.LEFT_CONTROL)
@@ -28,8 +27,9 @@ gui_update :: proc(w: ^World, dt: f32) {
     else if rl.IsKeyDown(.LEFT_SHIFT) do w.gui.drag_mode = .Reverse
     else                              do w.gui.drag_mode = .Normal
 
-    if rl.IsKeyPressed(.ONE) do w.gui.tile_type = .Box
-    else if rl.IsKeyPressed(.TWO) do w.gui.tile_type = .Portal
+    if      rl.IsKeyPressed(.ONE)   do w.gui.tile_type = .Wall
+    else if rl.IsKeyPressed(.TWO)   do w.gui.tile_type = .Portal
+    else if rl.IsKeyPressed(.THREE) do w.gui.tile_type = .Push
 
     if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
         err := config_save(LEVEL_FILE, w^)
@@ -56,8 +56,8 @@ gui_update :: proc(w: ^World, dt: f32) {
     }
 
 
-    if w.gui.tile_type != .Box {
-        w.gui.is_dragging = false // Can only drag in box mode.
+    if w.gui.tile_type != .Wall {
+        w.gui.is_dragging = false // Can only drag in wall mode.
     }
 
     modes : bit_set[GameMode]
@@ -83,17 +83,15 @@ gui_update :: proc(w: ^World, dt: f32) {
 
 
     if rl.IsMouseButtonPressed(.LEFT) {
+        hovered := snap_down_mouse(mouse)
         switch w.gui.tile_type {
-            case .Portal:
-                hovered := snap_down_mouse(mouse)
-                append(&w.boxes, Box{
-                    mode = modes,
-                    rect = {hovered.x, hovered.y, PLAYER_SIZE, PLAYER_SIZE},
-                    is_portal = true,
-                })
-            case .Box:
-                w.gui.drag_start = snap_down_mouse(mouse)
-                w.gui.is_dragging = true
+        case .Wall:
+            w.gui.drag_start = hovered
+            w.gui.is_dragging = true
+        case .Portal:
+            append(&w.boxes, new_portal(modes, hovered))
+        case .Push:
+            append(&w.boxes, new_push(hovered))
         }
     }
 
@@ -105,8 +103,7 @@ gui_update :: proc(w: ^World, dt: f32) {
         if rect.width == 0 || rect.height == 0 {
             return
         }
-
-        append(&w.boxes, Box{ mode = modes, rect = rect })
+        append(&w.boxes, new_wall(modes, rect))
     }
 }
 

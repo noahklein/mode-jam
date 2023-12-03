@@ -78,7 +78,7 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         if !ok {
             continue
         }
-        if box.is_portal {
+        if box.type == .Portal {
             change_game_mode(w)
         }
 
