@@ -56,6 +56,7 @@ player_pos :: proc(player: Player) -> rl.Vector2 {
 }
 
 PLAYER_SIZE :: 16
+PLAYER_SIZE_V :: rl.Vector2{PLAYER_SIZE, PLAYER_SIZE}
 
 main :: proc() {
     when ODIN_DEBUG {

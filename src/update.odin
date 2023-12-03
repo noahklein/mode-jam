@@ -73,18 +73,30 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     w.player.vel *= 1 - FRICTION
 
     // Resolve box collisions.
-    for box in w.boxes do if w.mode in box.mode {
+    for &box in w.boxes do if w.mode in box.mode {
         collision, ok := swept_rect_collision(w.player, box.rect, dt)
         if !ok {
             continue
         }
-        if box.type == .Portal {
-            change_game_mode(w)
-        }
 
-        w.player.vel += collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
-        if collision.normal.y == -1 {
-            w.player.is_grounded = true
+        switch box.type {
+        case .Portal: change_game_mode(w)
+        case .Wall:
+            delta_vel := collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
+            w.player.vel += delta_vel
+            if collision.normal.y == -1 {
+                w.player.is_grounded = true
+            }
+
+        case .Push:
+            delta_v := collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
+            w.player.vel += delta_v
+            if collision.normal.y == -1 {
+                w.player.is_grounded = true
+            }
+            delta_v *= dt * 5
+            box.rect.x -= delta_v.x
+            box.rect.y -= delta_v.y
         }
     }
 
@@ -202,8 +214,8 @@ swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Co
     }
 
     PADDING :: 2.0
-    p_pos  := rl.Vector2{player.rect.x + PADDING / 2, player.rect.y}
-    p_size := rl.Vector2{player.rect.width - PADDING, player.rect.height}
+    p_pos  := rl.Vector2{player.rect.x + PADDING / 2, player.rect.y + PADDING / 2}
+    p_size := rl.Vector2{player.rect.width - PADDING, player.rect.height - PADDING}
 
     expanded_rect := rl.Rectangle{
         x = rect.x - (p_size.x / 2),
@@ -211,7 +223,6 @@ swept_rect_collision :: proc(player: Player, rect: rl.Rectangle, dt: f32) -> (Co
         width  = rect.width  + p_size.x,
         height = rect.height + p_size.y,
     }
-
 
     collision, ok := ray_vs_rect(p_pos + p_size / 2, player.vel * dt, expanded_rect)
     return collision, ok && collision.time_entry >= 0 && collision.time_entry < 1

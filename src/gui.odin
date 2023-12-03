@@ -11,8 +11,6 @@ Gui :: struct {
     tile_type: BoxType,
     status: GuiStatus,
 
-    selected_box: int,
-
     hide_grid: bool,
 }
 
@@ -121,11 +119,16 @@ gui_draw2d :: proc(w: World) {
 
     mouse := mouse_to_world(w.cam)
     hovered := snap_down_mouse(mouse)
-    rl.DrawRectangle(i32(hovered.x), i32(hovered.y), PLAYER_SIZE, PLAYER_SIZE, drag_color(w.gui.drag_mode))
+
+    {
+    // Draw cursor snapped to grid.
+    PAD :: 5
+    rl.DrawRectangleV(hovered + PAD, PLAYER_SIZE_V - 2 * PAD, drag_color(w.mode, w.gui.drag_mode))
+    }
 
     if w.gui.tile_type != .Portal && w.gui.is_dragging {
         rect_outline := normalize_rect(w.gui.drag_start, snap_up_mouse(mouse))
-        rl.DrawRectangleLinesEx(rect_outline, 2, drag_color(w.gui.drag_mode))
+        rl.DrawRectangleLinesEx(rect_outline, 2, drag_color(w.mode, w.gui.drag_mode))
 
         coord_text := fmt.ctprintf("%v, %v", rect_outline.width, rect_outline.height)
         rl.DrawText(coord_text, i32(mouse.x + 1), i32(mouse.y + 1), 1, rl.WHITE)
@@ -152,11 +155,12 @@ gui_draw :: proc(w: World) {
     }
 }
 
-drag_color :: proc(mode: GuiDragMode) -> rl.Color {
-    switch mode {
-        case .Both:    return rl.PURPLE
-        case .Reverse: return rl.BLACK
-        case .Normal:  return rl.WHITE
+drag_color :: proc(mode: GameMode, drag_mode: GuiDragMode) -> rl.Color {
+    switch drag_mode {
+        // case .Both:    return rl.PURPLE
+        case .Both:    return box_color({.Sidescroller, .TopDown})
+        case .Reverse: return box_color({inverse_mode(mode)})
+        case .Normal:  return box_color({mode})
     }
 
     panic("Unsupported drag mode, can't get color")
