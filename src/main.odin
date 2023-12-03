@@ -6,7 +6,7 @@ import "core:math"
 import rl "vendor:raylib"
 import "sprites"
 
-LEVEL_FILE :: "assets/first.level"
+LEVEL_FILE :: "assets/levels/first.level"
 frame_count : f32
 
 GameMode :: enum u8 {
