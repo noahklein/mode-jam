@@ -89,8 +89,6 @@ main :: proc() {
     rl.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rl.CloseWindow()
 
-    rl.GuiEnable()
-
     world.tex_atlas = {
         tile_size = 16,
         texture = rl.LoadTexture("assets/Environment.png"),
