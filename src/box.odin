@@ -9,7 +9,8 @@ Box :: struct {
 }
 
 BoxType :: enum u8 {
-    Wall, Portal, Push
+    Wall, Portal, Push,
+    Checkpoint,
 }
 
 new_wall :: proc(modes: bit_set[GameMode], rect: rl.Rectangle) -> Box {
@@ -33,5 +34,13 @@ new_push :: proc(pos: rl.Vector2) -> Box {
         type = .Push,
         mode = {.Sidescroller, .TopDown},
         rect = {pos.x, pos.y, PLAYER_SIZE, PLAYER_SIZE},
+    }
+}
+
+new_checkpoint :: proc(rect: rl.Rectangle) -> Box {
+    return Box{
+        type = .Checkpoint,
+        mode = {.Sidescroller, .TopDown},
+        rect = rect,
     }
 }

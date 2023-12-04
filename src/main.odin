@@ -9,24 +9,6 @@ import "sprites"
 LEVEL_FILE :: "assets/levels/first.level"
 frame_count : f32
 
-GameMode :: enum u8 {
-    Sidescroller,
-    TopDown,
-}
-
-World :: struct {
-    mode: GameMode,
-    screen: rl.Vector2,
-    cam : rl.Camera2D,
-    player: Player,
-    boxes: [dynamic]Box,
-
-    tex_atlas: sprites.Atlas,
-    gui: Gui,
-
-    dt_acc: f32, // For fixed update
-}
-
 Player :: struct {
     rect: rl.Rectangle,
     vel: rl.Vector2,
@@ -94,7 +76,13 @@ main :: proc() {
         },
     }
     reserve(&world.boxes, 1024)
-    defer delete(world.boxes)
+    reserve(&world.checkpoint.boxes, 1024)
+    reserve(&world.checkpoint.activated, 128)
+    defer {
+        delete(world.boxes)
+        delete(world.checkpoint.boxes)
+        delete(world.checkpoint.activated)
+    }
 
     config_load(LEVEL_FILE, &world)
 
@@ -156,7 +144,10 @@ draw :: proc(w: World) {
     }
 
     // Draw drop-shadows under foreground boxes.
-    for box in w.boxes do if box.type != .Portal && w.mode in box.mode {
+    for box in w.boxes do if w.mode in box.mode {
+        if box.type == .Portal || box.type == .Checkpoint {
+            continue
+        }
         OFFSET :: 2
         shadow := rl.Rectangle{
             box.rect.x + OFFSET, box.rect.y + OFFSET,
@@ -169,6 +160,10 @@ draw :: proc(w: World) {
         // @TODO: cull off-screen boxes
 
         switch box.type {
+        case .Checkpoint:
+            when ODIN_DEBUG do if !w.gui.hide_grid {
+                rl.DrawRectangleRec(box.rect, rl.YELLOW)
+            }
         case .Wall:
             color := box_color(box.mode)
             rl.DrawRectangleRec(box.rect, color)

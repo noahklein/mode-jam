@@ -51,6 +51,8 @@ marshal :: proc(writer: io.Writer, world: World) -> MarshalError {
             fmt.wprintln(writer, "B", rect.x, rect.y, rect.width, rect.height, acc)
         case .Push:
             fmt.wprintln(writer, "X", rect.x, rect.y, rect.width, rect.height, acc)
+        case .Checkpoint:
+            fmt.wprintln(writer, "C", rect.x, rect.y, rect.width, rect.height, acc)
         }
     }
 
@@ -78,6 +80,10 @@ config_load :: proc(path: string, w: ^World) -> UnmarshalError {
         case "X":
             box := parse_box(tokens[1:]) or_return
             box.type = .Push
+            append(&w.boxes, box)
+        case "C":
+            box := parse_box(tokens[1:]) or_return
+            box.type = .Checkpoint
             append(&w.boxes, box)
         case "":
         case:

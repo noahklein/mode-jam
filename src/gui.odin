@@ -28,6 +28,7 @@ gui_update :: proc(w: ^World, dt: f32) {
     if      rl.IsKeyPressed(.ONE)   do w.gui.tile_type = .Wall
     else if rl.IsKeyPressed(.TWO)   do w.gui.tile_type = .Portal
     else if rl.IsKeyPressed(.THREE) do w.gui.tile_type = .Push
+    else if rl.IsKeyPressed(.FOUR)  do w.gui.tile_type = .Checkpoint
 
     if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
         err := config_save(LEVEL_FILE, w^)
@@ -54,8 +55,8 @@ gui_update :: proc(w: ^World, dt: f32) {
     }
 
 
-    if w.gui.tile_type != .Wall {
-        w.gui.is_dragging = false // Can only drag in wall mode.
+    if w.gui.tile_type != .Wall && w.gui.tile_type != .Checkpoint {
+        w.gui.is_dragging = false // Dragging only allowed for some types.
     }
 
     modes : bit_set[GameMode]
@@ -79,6 +80,8 @@ gui_update :: proc(w: ^World, dt: f32) {
             }
         }
     }
+
+    // Ctrl+Z is not exactly undo...
     if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyPressed(.Z) {
         if len(w.boxes) > 0 do pop(&w.boxes)
     }
@@ -87,7 +90,7 @@ gui_update :: proc(w: ^World, dt: f32) {
     if rl.IsMouseButtonPressed(.LEFT) {
         hovered := snap_down_mouse(mouse)
         switch w.gui.tile_type {
-        case .Wall:
+        case .Wall, .Checkpoint:
             w.gui.drag_start = hovered
             w.gui.is_dragging = true
         case .Portal:
@@ -105,7 +108,12 @@ gui_update :: proc(w: ^World, dt: f32) {
         if rect.width == 0 || rect.height == 0 {
             return
         }
-        append(&w.boxes, new_wall(modes, rect))
+
+        #partial switch w.gui.tile_type {
+        case .Wall: append(&w.boxes, new_wall(modes, rect))
+        case .Checkpoint: append(&w.boxes, new_checkpoint(rect))
+        case: fmt.panicf("dragging only allowed on walls and checkpoints: got %v", w.gui.tile_type)
+        }
     }
 }
 

@@ -22,6 +22,7 @@ Input :: enum u8 {
     Left, Right,
     Jump,
     ChangeMode,
+    ReloadCheckpoint,
 }
 
 get_input :: proc(w: World) -> (input: bit_set[Input]) {
@@ -34,7 +35,11 @@ get_input :: proc(w: World) -> (input: bit_set[Input]) {
          if rl.IsKeyDown(.LEFT)  || rl.IsKeyDown(.A) do input += {.Left}
     else if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) do input += {.Right}
 
-    if rl.IsKeyPressed(.SPACE) do input += {.ChangeMode}
+    if rl.IsKeyPressed(.R) do input += {.ReloadCheckpoint}
+
+    when ODIN_DEBUG {
+        if rl.IsKeyPressed(.SPACE) do input += {.ChangeMode}
+    }
 
     return input
 }
@@ -42,6 +47,10 @@ get_input :: proc(w: World) -> (input: bit_set[Input]) {
 update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     if .ChangeMode in input {
         change_game_mode(w)
+    }
+
+    if .ReloadCheckpoint in input {
+        checkpoint_reload(w)
     }
 
     switch w.mode {
@@ -77,6 +86,7 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         collision := swept_rect_collision(w.player.rect, box.rect, w.player.vel, dt) or_continue
 
         switch box.type {
+        case .Checkpoint: checkpoint_activate(w, box_id)
         case .Portal: change_game_mode(w)
         case .Wall:
             delta_vel := collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
