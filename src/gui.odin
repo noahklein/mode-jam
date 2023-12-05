@@ -30,8 +30,9 @@ gui_update :: proc(w: ^World, dt: f32) {
     else if rl.IsKeyPressed(.TWO)   do w.gui.tile_type = .Portal
     else if rl.IsKeyPressed(.THREE) do w.gui.tile_type = .Push
     else if rl.IsKeyPressed(.FOUR)  do w.gui.tile_type = .Checkpoint
+    else if rl.IsKeyPressed(.FIVE)  do w.gui.tile_type = .Spike
 
-    if rl.IsKeyPressed(.S) && rl.IsKeyDown(.LEFT_CONTROL) {
+    if rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyPressed(.S) {
         err := config_save(LEVEL_FILE, w^)
         if err != nil {
             fmt.eprintln("Failed to save level:", err)
@@ -39,7 +40,14 @@ gui_update :: proc(w: ^World, dt: f32) {
         } else {
             gui_status(&w.gui.status, "Saved level to " + LEVEL_FILE)
         }
-
+    } else if rl.IsKeyDown(.LEFT_CONTROL)  && rl.IsKeyPressed(.O) {
+        // clear(&w.boxes)
+        if err := config_load(LEVEL_FILE, w); err != nil {
+            fmt.eprintln("Failed to load level:", err)
+            gui_status(&w.gui.status, "Error! Failed to load level " + LEVEL_FILE)
+        } else {
+            gui_status(&w.gui.status, "Loaded level from " + LEVEL_FILE)
+        }
     }
 
     if rl.IsKeyPressed(.G) {
@@ -103,6 +111,8 @@ gui_update :: proc(w: ^World, dt: f32) {
             append(&w.boxes, new_portal(modes, hovered))
         case .Push:
             append(&w.boxes, new_push(hovered))
+        case .Spike:
+            append(&w.boxes, new_spike(hovered))
         }
     }
 
@@ -163,8 +173,8 @@ gui_draw :: proc(w: World) {
     draw_text(X, 4 * Y + TITLE, FONT, "Grounded:  %v", w.player.is_grounded)
     draw_text(X, 5 * Y + TITLE, FONT, "Player anim:  %q", w.player.anim.current_anim)
     // draw_text(X, 6 * Y + TITLE, FONT, physics_stat_report(w.physics_stats))
-    draw_text(X, 6 * Y + TITLE, FONT, "Physics: %3.2f%%, %v", stats_physics_pct(w.timers), time.stopwatch_duration(w.timers.physics))
-    draw_text(X, 7 * Y + TITLE, FONT, "Draw:  %4.2f%%, %v", stats_draw_pct(w.timers), time.stopwatch_duration(w.timers.draw))
+    draw_text(X, 6 * Y + TITLE, FONT, "Physics: %3.2f%%, %.2v", stats_physics_pct(w.timers), time.stopwatch_duration(w.timers.physics))
+    draw_text(X, 7 * Y + TITLE, FONT, "Draw:  %4.2f%%, %.2v", stats_draw_pct(w.timers), time.stopwatch_duration(w.timers.draw))
 
     if w.gui.status.msg != "" {
         STATUS_HEIGHT :: 25

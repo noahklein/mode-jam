@@ -89,6 +89,12 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         switch box.type {
         case .Checkpoint: checkpoint_activate(w, box_id)
         case .Portal: change_game_mode(w)
+        case .Spike:
+            if collision.normal.y == -1 {
+                checkpoint_reload(w) // @TODO: play death animation
+                return
+            }
+            fallthrough
         case .Wall:
             delta_vel := collision.normal * linalg.abs(w.player.vel) * (1 - collision.time_entry)
             w.player.vel += delta_vel

@@ -150,7 +150,7 @@ draw :: proc(w: World) {
 
     // Draw drop-shadows under foreground boxes.
     for box in w.boxes do if w.mode in box.mode {
-        if box.type == .Portal || box.type == .Checkpoint {
+        if box.type != .Wall && box.type != .Push {
             continue
         }
         OFFSET :: 2
@@ -174,6 +174,10 @@ draw :: proc(w: World) {
             rl.DrawRectangleRec(box.rect, color)
         case .Push:
             rect := sprites.sprite(w.tex_atlas, 4)
+            rl.DrawTextureRec(w.tex_atlas.texture, rect, {box.rect.x, box.rect.y}, rl.WHITE)
+        case .Spike:
+            // @TODO: spike orientation
+            rect := sprites.sprite(w.tex_atlas, 8)
             rl.DrawTextureRec(w.tex_atlas.texture, rect, {box.rect.x, box.rect.y}, rl.WHITE)
         case .Portal:
             if w.mode in box.mode {
@@ -216,7 +220,6 @@ box_color :: proc(mode: bit_set[GameMode]) -> rl.Color {
         case {.Sidescroller, .TopDown}: return rl.PURPLE
         case {.Sidescroller}:           return rl.BLUE
         case {.TopDown}:                return rl.RED
-
     }
 
     panic("box_color called on Box with empty bit_set[GameMode]")

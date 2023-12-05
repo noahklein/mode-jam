@@ -53,6 +53,8 @@ marshal :: proc(writer: io.Writer, world: World) -> MarshalError {
             fmt.wprintln(writer, "X", rect.x, rect.y, rect.width, rect.height, acc)
         case .Checkpoint:
             fmt.wprintln(writer, "C", rect.x, rect.y, rect.width, rect.height, acc)
+        case .Spike:
+            fmt.wprintln(writer, "S", rect.x, rect.y, rect.width, rect.height, acc)
         }
     }
 
@@ -60,6 +62,7 @@ marshal :: proc(writer: io.Writer, world: World) -> MarshalError {
 }
 
 config_load :: proc(path: string, w: ^World) -> UnmarshalError {
+    clear(&w.boxes)
     bytes, ok := os.read_entire_file(path, context.temp_allocator)
     if !ok { return .FileRead }
 
@@ -84,6 +87,10 @@ config_load :: proc(path: string, w: ^World) -> UnmarshalError {
         case "C":
             box := parse_box(tokens[1:]) or_return
             box.type = .Checkpoint
+            append(&w.boxes, box)
+        case "S":
+            box := parse_box(tokens[1:]) or_return
+            box.type = .Spike
             append(&w.boxes, box)
         case "":
         case:
