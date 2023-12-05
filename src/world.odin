@@ -58,6 +58,10 @@ checkpoint_reload :: proc(w: ^World) {
 
     w.mode = w.checkpoint.mode
     w.player = w.checkpoint.player
+    switch w.mode {
+    case .Sidescroller: sprites.play(w.player.anim, PlayerAnimation.Walk)
+    case .TopDown:      sprites.play(w.player.anim, PlayerAnimation.Forward)
+    }
     clear(&w.boxes)
     for box in w.checkpoint.boxes {
         append(&w.boxes, box)
