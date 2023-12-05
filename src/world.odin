@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:time"
 import rl "vendor:raylib"
 
 import "sprites"
@@ -18,7 +19,7 @@ World :: struct {
     tex_atlas: sprites.Atlas,
     gui: Gui,
 
-    dt_acc: f32, // For fixed update
+    timers: EngineTimers,
 }
 
 Checkpoint :: struct {
@@ -61,4 +62,21 @@ checkpoint_reload :: proc(w: ^World) {
     for box in w.checkpoint.boxes {
         append(&w.boxes, box)
     }
+}
+
+EngineTimers :: struct {
+    // stopwatch, physics_stopwatch, draw_stopwatch: time.Stopwatch,
+    total, physics, draw: time.Stopwatch
+}
+
+stats_physics_pct :: proc(timers: EngineTimers) -> f64{
+    return 100 * f64(dur(timers.physics)) / f64(dur(timers.total))
+}
+
+stats_draw_pct :: proc(timers: EngineTimers) -> f64{
+    return 100 * f64(dur(timers.draw)) / f64(dur(timers.total))
+}
+
+dur :: #force_inline proc(sw: time.Stopwatch) -> time.Duration {
+    return time.stopwatch_duration(sw)
 }

@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:time"
 import rl "vendor:raylib"
 import "core:math/linalg"
 
@@ -43,6 +44,11 @@ gui_update :: proc(w: ^World, dt: f32) {
 
     if rl.IsKeyPressed(.G) {
         w.gui.hide_grid = !w.gui.hide_grid
+    }
+
+    if scroll := rl.GetMouseWheelMove(); scroll != 0 {
+        w.cam.zoom += rl.GetMouseWheelMove() * 0.25
+        w.cam.zoom = clamp(w.cam.zoom, 0.2, 10)
     }
 
     // Update status bar timer.
@@ -156,6 +162,9 @@ gui_draw :: proc(w: World) {
     draw_text(X, 3 * Y + TITLE, FONT, "Vel:  %v", w.player.vel)
     draw_text(X, 4 * Y + TITLE, FONT, "Grounded:  %v", w.player.is_grounded)
     draw_text(X, 5 * Y + TITLE, FONT, "Player anim:  %q", w.player.anim.current_anim)
+    // draw_text(X, 6 * Y + TITLE, FONT, physics_stat_report(w.physics_stats))
+    draw_text(X, 6 * Y + TITLE, FONT, "Physics: %3.2f%%, %v", stats_physics_pct(w.timers), time.stopwatch_duration(w.timers.physics))
+    draw_text(X, 7 * Y + TITLE, FONT, "Draw:  %4.2f%%, %v", stats_draw_pct(w.timers), time.stopwatch_duration(w.timers.draw))
 
     if w.gui.status.msg != "" {
         STATUS_HEIGHT :: 25
@@ -165,7 +174,6 @@ gui_draw :: proc(w: World) {
 
 drag_color :: proc(mode: GameMode, drag_mode: GuiDragMode) -> rl.Color {
     switch drag_mode {
-        // case .Both:    return rl.PURPLE
         case .Both:    return box_color({.Sidescroller, .TopDown})
         case .Reverse: return box_color({inverse_mode(mode)})
         case .Normal:  return box_color({mode})

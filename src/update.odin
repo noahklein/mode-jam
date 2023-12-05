@@ -4,17 +4,17 @@ import rl "vendor:raylib"
 import "core:math"
 import "core:math/linalg"
 import "core:fmt"
+import "core:time"
 import "sprites"
 
 EPSILON :: 0.0001
-GRAVITY :: 1000
+GRAVITY :: 500
 FRICTION :: 0.1
 #assert(FRICTION >= 0 && FRICTION <= 1)
 
-FIXED_DT :: 1.0 / 120
 
-PLAYER_SPEED :: f32(1000.0)
-JUMP_FORCE :: 1000
+PLAYER_SPEED :: f32(500.0)
+JUMP_FORCE :: 500
 JUMP_APEX_TIME :: JUMP_FORCE / GRAVITY
 
 Input :: enum u8 {
@@ -58,11 +58,12 @@ update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
         case .TopDown     : top_down_update(w, input, dt)
     }
 
-    w.dt_acc += dt
-    for w.dt_acc >= FIXED_DT {
-        subupdate(w, input, FIXED_DT)
-        w.dt_acc -= FIXED_DT
+    when ODIN_DEBUG {
+        time.stopwatch_start(&w.timers.physics)
+        defer time.stopwatch_stop(&w.timers.physics)
     }
+
+    subupdate(w, input, dt)
 }
 
 subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {

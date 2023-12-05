@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:mem"
 import "core:math"
+import "core:time"
 import rl "vendor:raylib"
 import "sprites"
 
@@ -26,7 +27,7 @@ PlayerAnimation :: enum u8 {
 PLAYER_ANIMATIONS := [PlayerAnimation]sprites.Animation{
     .Idle = {    start_tile = 0,  end_tile = 2,  duration = 2 },
     .Walk = {    start_tile = 3,  end_tile = 11, duration = 1 },
-    .Jump = {    start_tile = 12, end_tile = 15, duration = 0.8 * JUMP_APEX_TIME },
+    .Jump = {    start_tile = 12, end_tile = 15, duration = 0.5 * JUMP_APEX_TIME },
 
     .Forward = { start_tile = 16, end_tile = 19, duration = 2},
     .Back    = { start_tile = 20, end_tile = 23, duration = 2},
@@ -69,7 +70,7 @@ main :: proc() {
     DEFAULT_SCREEN :: rl.Vector2{1600, 900}
     world := World{
         screen = DEFAULT_SCREEN,
-        cam = { zoom = 5, offset = DEFAULT_SCREEN * 0.5 },
+        cam = { zoom = 4.75, offset = DEFAULT_SCREEN * 0.5 },
         mode = .TopDown,
         player = {
             rect = { height = PLAYER_SIZE, width = PLAYER_SIZE },
@@ -77,7 +78,7 @@ main :: proc() {
     }
     reserve(&world.boxes, 1024)
     reserve(&world.checkpoint.boxes, 1024)
-    reserve(&world.checkpoint.activated, 128)
+    reserve(&world.checkpoint.activated, 64)
     defer {
         delete(world.boxes)
         delete(world.checkpoint.boxes)
@@ -119,11 +120,17 @@ main :: proc() {
             }
         }
 
+        time.stopwatch_start(&world.timers.total)
+
         input := get_input(world)
         update(&world, input, dt)
+
+        time.stopwatch_start(&world.timers.draw)
         draw(world)
+        time.stopwatch_stop(&world.timers.draw)
 
         free_all(context.temp_allocator)
+        time.stopwatch_stop(&world.timers.total)
     }
 }
 
