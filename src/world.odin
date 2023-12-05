@@ -35,7 +35,6 @@ Checkpoint :: struct {
 checkpoint_activate :: proc(w: ^World, box_id: int) {
     for cp in w.checkpoint.activated {
         if cp == box_id {
-            fmt.println("already activated")
             return // Already activated.
         }
     }

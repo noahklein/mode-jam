@@ -73,7 +73,8 @@ main :: proc() {
         cam = { zoom = 4.75, offset = DEFAULT_SCREEN * 0.5 },
         mode = .TopDown,
         player = {
-            rect = { height = PLAYER_SIZE, width = PLAYER_SIZE },
+            // rect = { width = PLAYER_SIZE, height = PLAYER_SIZE },
+            rect = { x = 1446, y = -159, height = PLAYER_SIZE, width = PLAYER_SIZE },
         },
     }
     reserve(&world.boxes, 1024)
