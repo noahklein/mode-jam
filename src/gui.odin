@@ -163,6 +163,8 @@ gui_draw2d :: proc(w: World) {
 
 gui_draw :: proc(w: World) {
     FONT :: 10
+    {
+    // Top-left panel
     X :: 10
     Y :: 10
     TITLE :: 18
@@ -172,9 +174,19 @@ gui_draw :: proc(w: World) {
     draw_text(X, 3 * Y + TITLE, FONT, "Vel:  %v", w.player.vel)
     draw_text(X, 4 * Y + TITLE, FONT, "Grounded:  %v", w.player.is_grounded)
     draw_text(X, 5 * Y + TITLE, FONT, "Player anim:  %q", w.player.anim.current_anim)
+    draw_text(X, 6 * Y + TITLE, FONT, "Tile type: %v", w.gui.tile_type)
+    }
     // draw_text(X, 6 * Y + TITLE, FONT, physics_stat_report(w.physics_stats))
-    draw_text(X, 6 * Y + TITLE, FONT, "Physics: %3.2f%%, %.2v", stats_physics_pct(w.timers), time.stopwatch_duration(w.timers.physics))
-    draw_text(X, 7 * Y + TITLE, FONT, "Draw:  %4.2f%%, %.2v", stats_draw_pct(w.timers), time.stopwatch_duration(w.timers.draw))
+
+    {
+    // Top-right panel
+    X := i32(w.screen.x - 200)
+    Y :: 10
+    TITLE :: 18
+    rl.GuiPanel({f32(X - 10), 0, w.screen.x, 10 * Y}, "Stats")
+    draw_text(X, 1 * Y + TITLE, FONT, "Physics: %3.2f%%, %.2v", stats_physics_pct(w.timers), time.stopwatch_duration(w.timers.physics))
+    draw_text(X, 2 * Y + TITLE, FONT, "Draw:  %4.2f%%, %.2v", stats_draw_pct(w.timers), time.stopwatch_duration(w.timers.draw))
+    }
 
     if w.gui.status.msg != "" {
         STATUS_HEIGHT :: 25
