@@ -7,7 +7,8 @@ import "core:time"
 import rl "vendor:raylib"
 import "sprites"
 
-LEVEL_FILE :: "assets/levels/first.level"
+// LEVEL_FILE :: "assets/levels/first.level"
+LEVEL_FILE :: "assets/levels/mystery.level"
 frame_count : f32
 
 Player :: struct {
@@ -17,7 +18,6 @@ Player :: struct {
 
     facing_dir: Direction,
     anim: ^sprites.AnimationSystem(PlayerAnimation),
-    sounds: []rl.Wave,
 }
 
 PlayerAnimation :: enum u8 {
@@ -118,6 +118,7 @@ main :: proc() {
     world.sounds = {
         .PortalEnter = rl.LoadSound("assets/sounds/portal.wav"),
         .Jump        = rl.LoadSound("assets/sounds/jump.wav"),
+        .Rebirth     = rl.LoadSound("assets/sounds/rebirth.wav"),
     }
     defer {
         for sound in world.sounds do rl.UnloadSound(sound)

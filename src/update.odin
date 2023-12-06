@@ -84,7 +84,14 @@ subupdate :: proc(w: ^World, input: bit_set[Input], dt: f32) {
 
     // Resolve box collisions.
     for &box, box_id in w.boxes do if w.mode in box.mode {
-        collision := swept_rect_collision(w.player.rect, box.rect, w.player.vel, dt) or_continue
+
+        PADDING :: 3.0
+        player_rect := pad_rect(PADDING, w.player.rect)
+        obstacle_rect := box.rect
+        if box.type == .Push {
+            obstacle_rect = pad_rect(PADDING, box.rect)
+        }
+        collision := swept_rect_collision(player_rect, obstacle_rect, w.player.vel, dt) or_continue
 
         switch box.type {
         case .Checkpoint: checkpoint_activate(w, box_id)
@@ -237,19 +244,15 @@ swept_rect_collision :: proc(obj, obstacle: rl.Rectangle, vel: rl.Vector2, dt: f
         return {}, false
     }
 
-    // @TODO: Move padding out of this function, this is player specific.
-    PADDING :: 2.0
-    p_pos  := rl.Vector2{obj.x + PADDING / 2, obj.y + PADDING / 2}
-    p_size := rl.Vector2{obj.width - PADDING, obj.height - PADDING}
-
     expanded_rect := rl.Rectangle{
-        x = obstacle.x - (p_size.x / 2),
-        y = obstacle.y - (p_size.y / 2),
-        width  = obstacle.width  + p_size.x,
-        height = obstacle.height + p_size.y,
+        x = obstacle.x - (obj.width / 2),
+        y = obstacle.y - (obj.height / 2),
+        width  = obstacle.width  + obj.width,
+        height = obstacle.height + obj.height,
     }
 
-    collision, ok := ray_vs_rect(p_pos + p_size / 2, vel * dt, expanded_rect)
+    origin := rl.Vector2{obj.x, obj.y} + {obj.width, obj.height} / 2
+    collision, ok := ray_vs_rect(origin, vel * dt, expanded_rect)
     return collision, ok && collision.time_entry >= 0 && collision.time_entry < 1
 }
 
@@ -259,4 +262,11 @@ change_game_mode :: proc(w: ^World) {
     anim: PlayerAnimation = .Forward if w.mode == .TopDown else .Idle
     sprites.play(w.player.anim, anim)
     rl.PlaySound(w.sounds[.PortalEnter])
+}
+
+pad_rect :: #force_inline proc(padding: f32, rect: rl.Rectangle) -> rl.Rectangle {
+    return {
+        rect.x + padding / 2, rect.y + padding / 2,
+        rect.width - padding, rect.height - padding,
+    }
 }

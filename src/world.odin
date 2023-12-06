@@ -24,7 +24,7 @@ World :: struct {
 }
 
 SoundId :: enum {
-    PortalEnter, Jump,
+    PortalEnter, Jump, Rebirth,
 }
 
 Checkpoint :: struct {
@@ -70,6 +70,8 @@ checkpoint_reload :: proc(w: ^World) {
     for box in w.checkpoint.boxes {
         append(&w.boxes, box)
     }
+
+    rl.PlaySound(w.sounds[.Rebirth])
 }
 
 EngineTimers :: struct {
