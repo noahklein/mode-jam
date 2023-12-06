@@ -73,8 +73,8 @@ main :: proc() {
         cam = { zoom = 4.75, offset = DEFAULT_SCREEN * 0.5 },
         mode = .TopDown,
         player = {
-            // rect = { width = PLAYER_SIZE, height = PLAYER_SIZE },
-            rect = { x = 1446, y = -159, height = PLAYER_SIZE, width = PLAYER_SIZE },
+            rect = { width = PLAYER_SIZE, height = PLAYER_SIZE },
+            // rect = { x = 1446, y = -159, height = PLAYER_SIZE, width = PLAYER_SIZE },
         },
     }
     reserve(&world.boxes, 1024)
@@ -88,6 +88,7 @@ main :: proc() {
 
     config_load(LEVEL_FILE, &world)
 
+    rl.SetTraceLogLevel(.ALL if ODIN_DEBUG else .WARNING)
     rl.InitWindow(i32(world.screen.x), i32(world.screen.y), "Dunkey game")
     defer rl.CloseWindow()
 

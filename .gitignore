@@ -1,4 +1,5 @@
 build/
+build.tar.gz
 *.bin
 *.spall
 imgui.ini
