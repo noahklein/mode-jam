@@ -17,6 +17,7 @@ Player :: struct {
 
     facing_dir: Direction,
     anim: ^sprites.AnimationSystem(PlayerAnimation),
+    sounds: []rl.Wave,
 }
 
 PlayerAnimation :: enum u8 {
@@ -109,6 +110,21 @@ main :: proc() {
     // @HACK: need to switch animations to initialize it properly
     sprites.play(world.player.anim, PlayerAnimation.Walk)
     sprites.play(world.player.anim, PlayerAnimation.Forward)
+
+    // Load audio.
+    rl.InitAudioDevice()
+    defer rl.CloseAudioDevice()
+    rl.SetMasterVolume(0.4)
+    world.sounds = {
+        .PortalEnter = rl.LoadSound("assets/sounds/portal.wav"),
+        .Jump        = rl.LoadSound("assets/sounds/jump.wav"),
+    }
+    defer {
+        for sound in world.sounds do rl.UnloadSound(sound)
+    }
+
+
+    checkpoint_activate(&world, -1) // Set 0th checkpoint to initial setup.
 
     rl.SetTargetFPS(60)
     for !rl.WindowShouldClose() {

@@ -17,9 +17,14 @@ World :: struct {
     checkpoint: Checkpoint,
 
     tex_atlas: sprites.Atlas,
+    sounds: [SoundId]rl.Sound,
     gui: Gui,
 
     timers: EngineTimers,
+}
+
+SoundId :: enum {
+    PortalEnter, Jump,
 }
 
 Checkpoint :: struct {
@@ -33,7 +38,7 @@ Checkpoint :: struct {
 }
 
 checkpoint_activate :: proc(w: ^World, box_id: int) {
-    for cp in w.checkpoint.activated {
+    #reverse for cp in w.checkpoint.activated {
         if cp == box_id {
             return // Already activated.
         }
@@ -68,7 +73,6 @@ checkpoint_reload :: proc(w: ^World) {
 }
 
 EngineTimers :: struct {
-    // stopwatch, physics_stopwatch, draw_stopwatch: time.Stopwatch,
     total, physics, draw: time.Stopwatch
 }
 

@@ -145,7 +145,6 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
     else if .Right in input do w.player.vel.x += PLAYER_SPEED * dt
 
 
-    // @BAD: this should be in the fixed update function.
     w.player.vel.y += GRAVITY * dt
     if w.player.is_grounded {
         if .Jump in input {
@@ -153,6 +152,7 @@ sidescroll_update :: proc(w: ^World, input: bit_set[Input], dt: f32) {
             w.player.vel.y = -JUMP_FORCE
             apex_time := abs(w.player.vel.y / GRAVITY)
             sprites.play(p_anim, PlayerAnimation.Jump)
+            rl.PlaySound(w.sounds[.Jump])
         }
     }
 }
@@ -258,4 +258,5 @@ change_game_mode :: proc(w: ^World) {
 
     anim: PlayerAnimation = .Forward if w.mode == .TopDown else .Idle
     sprites.play(w.player.anim, anim)
+    rl.PlaySound(w.sounds[.PortalEnter])
 }
