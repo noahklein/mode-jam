@@ -101,6 +101,7 @@ config_load :: proc(path: string, w: ^World) -> UnmarshalError {
     return nil
 }
 
+@(require_results)
 parse_box :: proc(tokens: []string) -> (box: Box, err: UnmarshalError) {
     assert(len(tokens) == 5, "Not enough args for Box")
 
